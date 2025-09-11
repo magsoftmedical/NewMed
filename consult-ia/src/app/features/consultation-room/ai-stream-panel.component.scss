@@ -1,7 +1,8 @@
 .panel{ display:grid; gap:12px; }
 
 .sticky{
-  background: linear-gradient(90deg,#0f172a,#101827);
+  // background: linear-gradient(90deg,#0f172a,#101827);
+  background: linear-gradient(90deg,--muted,--accent-2);
   padding:10px; border-radius:12px; border:1px solid var(--border);
 }
 .title{ font-weight:700; margin-bottom:6px; }

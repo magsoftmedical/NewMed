@@ -234,7 +234,7 @@ def build_suggestions(missing: List[str]) -> List[str]:
     tips_map = {
         "afiliacion.motivoConsulta": "Indique el motivo de consulta.",
         "anamnesis.sintomasPrincipales": "Mencione los síntomas principales.",
-        "diagnosticos": "Registre al menos un diagnóstico (nombre, tipo y CIE‑10 si es posible).",
+        "diagnosticos": "Registre al menos un diagnóstico (nombre, tipo y CIE-10 si es posible).",
         "tratamientos": "Consigne al menos un tratamiento (medicamento y dosis/indicaciones).",
     }
     return [tips_map[m] for m in missing if m in tips_map]

@@ -334,66 +334,66 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
   exportPdf(): void {
     try {
       const data = this.formData = {
-  afiliacion: {
-    nombreCompleto: "Álvaro Castro",
-    edad: 48,
-    meses: 6,
-    sexo: "M",
-    dni: "4040825",
-    grupoSangre: "O+",
-    fechaHora: "2025-09-03 15:00",
-    seguro: "Seguro Integral de Salud",
-    tipoConsulta: "Primera vez",
-    numeroSeguro: "SIS-123456"
-  },
-  motivoConsulta: "Paciente refiere resfriado, dolores estomacales y sarpullido en la mano.",
-  anamnesis: {
-    tiempoEnfermedad: "6 meses",
-    sintomasPrincipales: ["resfriado", "dolores estomacales", "sarpullido en la mano"],
-    relato: "Desde hace seis meses presenta molestias recurrentes, con empeoramiento en la última semana.",
-    funcionesBiologicas: {
-      apetito: "Disminuido",
-      sed: "Normal",
-      orina: "Normal",
-      deposiciones: "Ligeramente blandas",
-      sueno: "Disminuido"
-    },
-    personales: {
-      padre: "Hipertenso",
-      madre: "Diabética"
-    },
-    alergias: "Ninguna conocida",
-    medicamentos: "Paracetamol ocasional"
-  },
-  examenClinico: {
-    PA: "120/80",
-    FC: 80,
-    FR: 18,
-    temperatura: "37.8 °C",
-    SpO2: "96%",
-    IMC: "24.5",
-    estadoGeneral: "Consciente, orientado",
-    descripcionGeneral: "Apariencia decaída, sin signos de deshidratación severa"
-  },
-  diagnosticos: [
-    { nombre: "Resfriado común", cie10: "J00", tipo: "Presuntivo" },
-    { nombre: "Dermatitis alérgica", cie10: "L23", tipo: "Diferencial" }
-  ],
-  examenes: [
-    { nombre: "Hemograma completo", cpt: "85025", indicaciones: "Evaluar infección" },
-    { nombre: "Examen de orina", cpt: "81001", indicaciones: "Descartar anomalías" }
-  ],
-  tratamientos: [
-    { medicamento: "Ibuprofeno 400mg", dosis: "Cada 8h por 5 días", cpt: "J8499" },
-    { medicamento: "Loratadina 10mg", dosis: "1 diaria por 7 días", cpt: "J8499" }
-  ],
-  interconsultas: [
-    { especialidad: "Dermatología", motivo: "Evaluar sarpullido persistente" }
-  ],
-  sugerenciasIA: "Considerar exámenes adicionales si persisten los síntomas.",
-  camposFaltantes: ["Antecedentes quirúrgicos"]
-};
-;
+        afiliacion: {
+          nombreCompleto: "Álvaro Castro",
+          edad: 48,
+          meses: 6,
+          sexo: "M",
+          dni: "4040825",
+          grupoSangre: "O+",
+          fechaHora: "2025-09-03 15:00",
+          seguro: "Seguro Integral de Salud",
+          tipoConsulta: "Primera vez",
+          numeroSeguro: "SIS-123456"
+        },
+        motivoConsulta: "Paciente refiere resfriado, dolores estomacales y sarpullido en la mano.",
+        anamnesis: {
+          tiempoEnfermedad: "6 meses",
+          sintomasPrincipales: ["resfriado", "dolores estomacales", "sarpullido en la mano"],
+          relato: "Desde hace seis meses presenta molestias recurrentes, con empeoramiento en la última semana.",
+          funcionesBiologicas: {
+            apetito: "Disminuido",
+            sed: "Normal",
+            orina: "Normal",
+            deposiciones: "Ligeramente blandas",
+            sueno: "Disminuido"
+          },
+          personales: {
+            padre: "Hipertenso",
+            madre: "Diabética"
+          },
+          alergias: "Ninguna conocida",
+          medicamentos: "Paracetamol ocasional"
+        },
+        examenClinico: {
+          PA: "120/80",
+          FC: 80,
+          FR: 18,
+          temperatura: "37.8 °C",
+          SpO2: "96%",
+          IMC: "24.5",
+          estadoGeneral: "Consciente, orientado",
+          descripcionGeneral: "Apariencia decaída, sin signos de deshidratación severa"
+        },
+        diagnosticos: [
+          { nombre: "Resfriado común", cie10: "J00", tipo: "Presuntivo" },
+          { nombre: "Dermatitis alérgica", cie10: "L23", tipo: "Diferencial" }
+        ],
+        examenes: [
+          { nombre: "Hemograma completo", cpt: "85025", indicaciones: "Evaluar infección" },
+          { nombre: "Examen de orina", cpt: "81001", indicaciones: "Descartar anomalías" }
+        ],
+        tratamientos: [
+          { medicamento: "Ibuprofeno 400mg", dosis: "Cada 8h por 5 días", cpt: "J8499" },
+          { medicamento: "Loratadina 10mg", dosis: "1 diaria por 7 días", cpt: "J8499" }
+        ],
+        interconsultas: [
+          { especialidad: "Dermatología", motivo: "Evaluar sarpullido persistente" }
+        ],
+        sugerenciasIA: "Considerar exámenes adicionales si persisten los síntomas.",
+        camposFaltantes: ["Antecedentes quirúrgicos"]
+      };
+
       const afiliacion = data.afiliacion || {};
       const anamnesis = data.anamnesis || {};
       const funcionesBio = anamnesis.funcionesBiologicas || {};
