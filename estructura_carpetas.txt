@@ -1,0 +1,14 @@
+﻿consult-ia
+consult-ia\.vscode
+consult-ia\backend
+consult-ia\public
+consult-ia\src
+consult-ia\src\app
+consult-ia\src\app\core
+consult-ia\src\app\features
+consult-ia\src\app\features\consultation-room
+consult-ia\src\assets
+consult-ia\src\assets\js
+consult-ia\src\assets\worklets
+consult-ia\src\environments
+consult-ia\src\typings
