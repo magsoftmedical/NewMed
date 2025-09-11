@@ -1,0 +1,61 @@
+.panel{ display:grid; gap:12px; }
+
+.sticky{
+  background: linear-gradient(90deg,#0f172a,#101827);
+  padding:10px; border-radius:12px; border:1px solid var(--border);
+}
+.title{ font-weight:700; margin-bottom:6px; }
+
+/* Barra de progreso local */
+.progress{ height:8px; background:#1f2230; border-radius:8px; overflow:hidden; }
+.progress > .bar{
+  height:100%;
+  background: linear-gradient(90deg, var(--accent, #3b82f6), var(--accent-2, #22c55e));
+  transition: width .25s;
+}
+.progress span{ display:block; margin-top:4px; font-size:.8rem; color:var(--muted,#94a3b8); }
+
+/* Secciones */
+.section{
+  cursor:pointer; display:flex; align-items:center; justify-content:space-between;
+  padding:8px 6px; border-bottom:1px solid #141a25; user-select:none;
+}
+.section:hover{ background:#0f1522; border-radius:8px; }
+
+/* Contador (antes @extend .badge) */
+.count{
+  background:#1f2937; color:#cbd5e1;
+  padding:2px 8px; border-radius:999px; font-size:.75rem;
+}
+
+/* Lista de campos */
+.list{ list-style:none; margin:0; padding:0; border:1px solid var(--border,#1f2a3b); border-radius:12px; overflow:hidden; }
+.list.collapsed{ display:none; }
+
+li{
+  display:grid; grid-template-columns:14px 1fr auto; gap:10px; align-items:center;
+  padding:8px 10px; background:#0f172a; border-bottom:1px solid #131b2a;
+}
+li:last-child{ border-bottom:0; }
+li.updated{ animation: glow 1.2s ease; }
+@keyframes glow{ from{ background:rgba(234,179,8,.12)} to{ background:transparent } }
+
+.dot{ width:10px;height:10px;border-radius:50%; background:#3a3a3a; }
+.dot.new{ background:#22c55e; }
+.dot.upd{ background:#eab308; }
+.dot.empty{ background:#6b7280; }
+
+.label{ color:#e5e7eb; font-weight:600; }
+.value{
+  color:#cbd5e1; max-width:58vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  background:#0b1220; padding:3px 8px; border-radius:6px; border:1px solid #162033;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.value.placeholder{ color:#6b7280; font-style:italic; }
+
+/* Botón mini */
+.mini{
+  background:transparent; border:1px solid #273247; color:#cbd5e1;
+  border-radius:8px; padding:4px 8px; cursor:pointer;
+}
+.mini:hover{ background:#172236; }

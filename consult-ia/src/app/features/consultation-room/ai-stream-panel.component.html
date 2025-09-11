@@ -1,0 +1,31 @@
+<div class="panel">
+  <header class="sticky">
+    <div class="title">Asistente IA (streaming)</div>
+
+    <div class="progress">
+      <div class="bar" [style.width.%]="progress()"></div>
+    </div>
+    <div style="margin-top:4px;font-size:.85rem;opacity:.8">
+      {{ completed() }} / {{ total() }} campos completos
+    </div>
+  </header>
+
+  <section *ngFor="let s of sections">
+    <h3 class="section" (click)="toggle(s)">
+      {{ s }} <span class="count">{{ completedIn(s) }}</span>
+    </h3>
+
+    <ul class="list" [class.collapsed]="open !== s">
+      <li *ngFor="let f of bySection(s); trackBy: trackByPath" [class.updated]="f.status==='updated'">
+        <span class="dot" [class.empty]="f.status==='empty'" [class.new]="f.status==='new'" [class.upd]="f.status==='updated'"></span>
+        <span class="label">{{ f.label }}</span>
+        <span class="value" [class.placeholder]="!f.value">{{ f.value || '—' }}</span>
+        <button class="mini" (click)="clearField(f)" title="Limpiar">🗑️</button>
+      </li>
+    </ul>
+  </section>
+
+  <div style="display:flex;justify-content:flex-end;margin-top:8px">
+    <button class="btn ghost" (click)="clearAll()">Limpiar todo</button>
+  </div>
+</div>

@@ -1,0 +1,199 @@
+<div data-test="CONSULTA-ACTIVA" style="background:#1d4ed8;color:white;padding:6px;border-radius:8px;margin-bottom:8px">
+  🔍 Estoy en <b>consultation-room.component.html</b>
+</div>
+
+<div class="container">
+  <div class="split">
+    <!-- ========== Columna IZQUIERDA: captura + IA ========== -->
+    <aside class="grid">
+      <!-- Estado de captura / Controles -->
+      <section class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <div class="muted">
+              <span class="status-dot" [style.background]="listening ? '#22c55e' : '#475569'"></span>
+
+            {{ listening ? 'Escuchando…' : 'Detenido' }}
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn" (click)="startMic()">Iniciar</button>
+            <button class="btn ghost" (click)="stopMic()">Detener</button>
+            <button class="btn ghost" (click)="clearText()">Limpiar</button>
+            <button class="btn ghost" (click)="downloadTxt()">Exportar TXT</button>
+            <button class="btn" (click)="exportPdf()">Exportar PDF</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Barra VAD -->
+        <div class="progress" title="nivel de voz">
+          <div class="bar" [style.width.%]="(level*100)"></div>
+        </div>
+
+        <!-- Transcripción -->
+        <div style="margin-top:10px">
+          <div class="muted" style="font-style:italic;white-space:pre-wrap">{{ partialText }}</div>
+          <div style="white-space:pre-wrap">{{ finalText }}</div>
+        </div>
+      </section>
+
+      <!-- Asistente IA -->
+      <section class="card">
+        <div class="card-title">Asistente IA (streaming)</div>
+        <p class="muted" *ngIf="!assistantLive">La IA completará campos y sugerencias en tiempo real…</p>
+        <p *ngIf="assistantLive">{{ assistantLive }}</p>
+
+        <!-- Panel de deltas agrupado/estados -->
+        <ai-stream-panel></ai-stream-panel>
+      </section>
+
+      <!-- Sugerencias y faltantes -->
+      <section class="card">
+        <div class="card-title">Sugerencias IA</div>
+        <ul style="margin:0;padding-left:18px">
+          <li *ngFor="let s of suggestions">{{ s }}</li>
+        </ul>
+
+        <div class="divider"></div>
+
+        <div class="card-title" style="margin-top:8px">Campos faltantes</div>
+        <ul style="margin:0;padding-left:18px">
+          <li *ngFor="let m of missing">{{ m }}</li>
+        </ul>
+      </section>
+    </aside>
+
+    <!-- ========== Columna DERECHA: Historia Clínica (form) ========== -->
+    <main class="grid">
+      <form [formGroup]="hcForm" class="grid" style="gap:16px">
+        <!-- Afiliación -->
+        <fieldset formGroupName="afiliacion" class="card">
+          <legend><b>Afiliación</b></legend>
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.75rem">
+            <label>Nombre <input formControlName="nombreCompleto" /></label>
+
+            <div formGroupName="edad" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem">
+              <label>Edad (años) <input type="number" formControlName="anios" /></label>
+              <label>Edad (meses) <input type="number" formControlName="meses" /></label>
+            </div>
+
+            <label>Sexo
+              <select formControlName="sexo">
+                <option value="">-</option>
+                <option>M</option><option>F</option>
+                <option>Masculino</option><option>Femenino</option>
+              </select>
+            </label>
+
+            <label>DNI <input formControlName="dni" /></label>
+            <label>Grupo <input formControlName="grupoSangre" /></label>
+            <label>Fecha/Hora <input formControlName="fechaHora" /></label>
+            <label>Seguro <input formControlName="seguro" /></label>
+            <label>Tipo consulta <input formControlName="tipoConsulta" /></label>
+            <label>N° Seguro <input formControlName="numeroSeguro" /></label>
+
+            <label style="grid-column:1/-1">Motivo de consulta
+              <textarea id="ctrl-motivo" formControlName="motivoConsulta" rows="2"></textarea>
+            </label>
+          </div>
+        </fieldset>
+
+        <!-- Anamnesis -->
+        <fieldset formGroupName="anamnesis" class="card">
+          <legend><b>Anamnesis</b></legend>
+
+          <label>Tiempo de enfermedad <input formControlName="tiempoEnfermedad" /></label>
+
+          <label>Síntomas principales</label>
+          <div formArrayName="sintomasPrincipales">
+            <span class="badge" *ngFor="let s of hcForm.get('anamnesis.sintomasPrincipales')!.value">{{ s }}</span>
+          </div>
+
+          <label>Relato <textarea formControlName="relato" rows="2"></textarea></label>
+
+          <div formGroupName="funcionesBiologicas" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.5rem">
+            <label>Apetito <input formControlName="apetito" /></label>
+            <label>Sed <input formControlName="sed" /></label>
+            <label>Orina <input formControlName="orina" /></label>
+            <label>Deposiciones <input formControlName="deposiciones" /></label>
+            <label>Sueño <input formControlName="sueno" /></label>
+          </div>
+
+          <div formGroupName="antecedentes" class="grid" style="gap:8px">
+            <div><b>Personales:</b>
+              <span class="badge" *ngFor="let p of hcForm.get('anamnesis.antecedentes.personales')!.value">{{ p }}</span>
+            </div>
+            <div><b>Padre:</b>
+              <span class="badge" *ngFor="let p of hcForm.get('anamnesis.antecedentes.padre')!.value">{{ p }}</span>
+            </div>
+            <div><b>Madre:</b>
+              <span class="badge" *ngFor="let p of hcForm.get('anamnesis.antecedentes.madre')!.value">{{ p }}</span>
+            </div>
+            <div><b>Alergias:</b>
+              <span class="badge" *ngFor="let a of hcForm.get('anamnesis.alergias')!.value">{{ a }}</span>
+            </div>
+            <div><b>Medicamentos:</b>
+              <span class="badge" *ngFor="let m of hcForm.get('anamnesis.medicamentos')!.value">{{ m }}</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Examen clínico -->
+        <fieldset formGroupName="examenClinico" class="card">
+          <legend><b>Examen Clínico</b></legend>
+          <div formGroupName="signosVitales" style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:.5rem">
+            <label>PA <input id="ctrl-pa" formControlName="PA" placeholder="120/80" /></label>
+            <label>FC <input type="number" formControlName="FC" /></label>
+            <label>FR <input type="number" formControlName="FR" /></label>
+            <label>Temp <input id="ctrl-temp" type="number" formControlName="temperatura" /></label>
+            <label>SpO2 <input type="number" formControlName="SpO2" /></label>
+            <label>IMC <input type="number" formControlName="IMC" /></label>
+          </div>
+          <label>Estado general <input formControlName="estadoGeneral" /></label>
+          <label>Descripción general <textarea formControlName="descripcionGeneral" rows="2"></textarea></label>
+        </fieldset>
+
+        <!-- Diagnósticos -->
+        <fieldset class="card">
+          <legend><b>Diagnósticos</b></legend>
+          <div formArrayName="diagnosticos" class="grid" style="gap:.5rem">
+            <div *ngFor="let dg of dxArr.controls; let i = index" [formGroupName]="i"
+                 style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem">
+              <label>Nombre <input formControlName="nombre" /></label>
+              <label>Tipo
+                <select formControlName="tipo">
+                  <option value="">-</option>
+                  <option>presuntivo</option><option>definitivo</option>
+                </select>
+              </label>
+              <label>CIE-10 <input formControlName="cie10" /></label>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Tratamientos -->
+        <fieldset class="card">
+          <legend><b>Tratamientos</b></legend>
+          <div formArrayName="tratamientos" class="grid" style="gap:.5rem">
+            <div *ngFor="let tt of ttoArr.controls; let i = index" [formGroupName]="i"
+                 style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem">
+              <label>Medicamento <input formControlName="medicamento" /></label>
+              <label>Dosis/Indicación <input formControlName="dosisIndicacion" /></label>
+              <label>GTIN <input formControlName="gtin" /></label>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Firma -->
+        <fieldset formGroupName="firma" class="card">
+          <legend><b>Firma</b></legend>
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem">
+            <label>Médico <input formControlName="medico" /></label>
+            <label>Colegiatura <input formControlName="colegiatura" /></label>
+            <label>Fecha <input formControlName="fecha" /></label>
+          </div>
+        </fieldset>
+      </form>
+    </main>
+  </div>
+</div>
