@@ -23,6 +23,7 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
   finalText = '';
   listening = false;
   level = 0;
+  sessionId!: string;
 
   // IA
   assistantLive = '';            // <- usado en el HTML
@@ -107,8 +108,13 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
 
     // 2) Conectar a IA (solo navegador)
     if (this.isBrowser) {
-      const sid = globalThis.crypto?.randomUUID?.() || String(Date.now());
-      this.ai.connect(sid);
+      if (!this.sessionId) {
+        this.sessionId = globalThis.crypto?.randomUUID?.() || String(Date.now());
+        this.ai.connect(this.sessionId);
+      } else {
+        // if already connected, don’t reconnect with new id
+        this.ai.connect(this.sessionId);
+      }
     }
 
     // 3) Suscripciones STT
