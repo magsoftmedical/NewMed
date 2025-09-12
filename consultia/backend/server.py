@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from backend.constants import SCHEMA, REQUIRED_KEYS
+from consultia.backend.constants import SCHEMA, REQUIRED_KEYS
 
 # SDK OpenAI nuevo (>=1.0)
 from openai import OpenAI
