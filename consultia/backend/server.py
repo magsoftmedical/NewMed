@@ -456,7 +456,7 @@ async def extract_form_delta(session_id: str, new_fragment: str) -> dict:
         "1. Devuelve SOLO un objeto JSON parcial con los campos que deben actualizarse basados en el fragmento.\n"
         "   - Si no hay información nueva, devuelve {}.\n"
         "2. Usa únicamente claves y estructuras que existan en el schema.\n"
-        "3. Lee las descripciones del schema para decidir el campo más adecuado donde ubicar la información.\n"
+        "3. Lee las descripciones del schema para decidir el campo más adecuado. Si varios campos son relevantes, actualiza más de uno.\n"
         "4. Respeta los tipos de datos definidos en el schema (string, number, array, object, enum, etc.).\n"
         "5. Para arrays, agrega elementos en una lista.\n"
         "6. No inventes claves ni devuelvas texto adicional fuera del JSON.\n"

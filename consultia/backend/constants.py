@@ -63,10 +63,15 @@ SCHEMA: Dict[str, Any] = {
                     "type": "string",
                     "description": "Número de seguro o póliza del paciente."
                 },
-                "motivoConsulta": {
-                    "type": "string",
-                    "description": "Razón principal por la cual el paciente consulta."
-                }
+				"motivoConsulta": {
+					"type": "string",
+					"description": (
+						"Razón principal por la cual el paciente consulta. "
+						"Usualmente introducido con frases como 'acude para…' o 'el motivo de consulta es…'. "
+						"Debe ser breve, una o dos frases máximo. "
+						"Puede superponerse con sintomasPrincipales o relato."
+					)
+				},
             }
         },
         "anamnesis": {
@@ -78,14 +83,21 @@ SCHEMA: Dict[str, Any] = {
                     "description": "Tiempo de evolución de la enfermedad actual."
                 },
                 "sintomasPrincipales": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Lista de síntomas principales que refiere el paciente."
-                },
-                "relato": {
-                    "type": "string",
-                    "description": "Narrativa libre de la historia de la enfermedad actual."
-                },
+					"type": "array",
+					"items": {"type": "string"},
+					"description": (
+						"Lista breve de síntomas claves, cada uno de 1-3 palabras (ejemplo: 'fiebre', 'dolor abdominal'). "
+						"Si el paciente menciona múltiples síntomas, dividirlos en elementos separados. "
+						"Puede aparecer también en relato o motivoConsulta."
+					)
+				},
+				"relato": {
+					"type": "string",
+					"description": (
+						"Narrativa libre del paciente sobre su condición, en forma de oración o párrafo. "
+						"Puede incluir los síntomas principales y el motivo, pero debe mantenerse como narración continua."
+					)
+				},
                 "funcionesBiologicas": {
                     "type": "object",
                     "description": "Funciones biológicas básicas.",
