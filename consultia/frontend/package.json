@@ -8,7 +8,8 @@
     "watch": "ng build --watch --configuration development",
     "start:open": "ng serve --open",
     "test": "ng test",
-    "serve:ssr:consult-ia": "node dist/consult-ia/server/server.mjs"
+    "serve:ssr:consult-ia": "node dist/consult-ia/server/server.mjs",
+    "heroku-postbuild": "npm install && npm run build -- --configuration production"
   },
   "private": true,
   "dependencies": {

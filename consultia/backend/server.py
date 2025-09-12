@@ -14,9 +14,10 @@ import logging
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, logger
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from consultia.backend.constants import SCHEMA, REQUIRED_KEYS
+from .constants import SCHEMA, REQUIRED_KEYS
 
 # SDK OpenAI nuevo (>=1.0)
 from openai import OpenAI
@@ -38,6 +39,7 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 # Permite a tu front en http://localhost:4200 (ajusta para producción)
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:4200,http://127.0.0.1:4200").split(",")
+FRONTEND_PATH = os.path.join(os.path.dirname(__file__), "../frontend/dist/consultia")
 
 # ------------------ App ------------------
 
@@ -50,6 +52,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+if os.path.isdir(FRONTEND_PATH):
+    app.mount("/", StaticFiles(directory=FRONTEND_PATH, html=True), name="frontend")
 
 # Memoria simple por sesión (RAM)
 sessions: Dict[str, Dict[str, Any]] = {}
