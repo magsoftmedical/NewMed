@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from backend.constants import SCHEMA, REQUIRED_KEYS
 
 # SDK OpenAI nuevo (>=1.0)
 from openai import OpenAI
@@ -53,153 +54,6 @@ app.add_middleware(
 # Memoria simple por sesión (RAM)
 sessions: Dict[str, Dict[str, Any]] = {}
 
-# ------------------ Schema de Historia Clínica (alineado a tu PDF) ------------------
-
-SCHEMA: Dict[str, Any] = {
-    "type": "object",
-    "properties": {
-        "afiliacion": {
-            "type": "object",
-            "properties": {
-                "nombreCompleto": {"type": "string"},
-                "edad": {
-                    "type": "object",
-                    "properties": {"anios": {"type": "integer"}, "meses": {"type": "integer"}},
-                    "required": ["anios"],
-                    "additionalProperties": False
-                },
-                "sexo": {"type": "string", "enum": ["Masculino", "Femenino", "M", "F"]},
-                "dni": {"type": "string"},
-                "grupoSangre": {"type": "string"},
-                "fechaHora": {"type": "string"},
-                "seguro": {"type": "string"},
-                "tipoConsulta": {"type": "string"},
-                "numeroSeguro": {"type": "string"},
-                "motivoConsulta": {"type": "string"}
-            },
-            "additionalProperties": False
-        },
-        "anamnesis": {
-            "type": "object",
-            "properties": {
-                "tiempoEnfermedad": {"type": "string"},
-                "sintomasPrincipales": {"type": "array", "items": {"type": "string"}},
-                "relato": {"type": "string"},
-                "funcionesBiologicas": {
-                    "type": "object",
-                    "properties": {
-                        "apetito": {"type": "string"},
-                        "sed": {"type": "string"},
-                        "orina": {"type": "string"},
-                        "deposiciones": {"type": "string"},
-                        "sueno": {"type": "string"}
-                    },
-                    "additionalProperties": False
-                },
-                "antecedentes": {
-                    "type": "object",
-                    "properties": {
-                        "personales": {"type": "array", "items": {"type": "string"}},
-                        "padre": {"type": "array", "items": {"type": "string"}},
-                        "madre": {"type": "array", "items": {"type": "string"}}
-                    },
-                    "additionalProperties": False
-                },
-                "alergias": {"type": "array", "items": {"type": "string"}},
-                "medicamentos": {"type": "array", "items": {"type": "string"}}
-            },
-            "additionalProperties": False
-        },
-        "examenClinico": {
-            "type": "object",
-            "properties": {
-                "signosVitales": {
-                    "type": "object",
-                    "properties": {
-                        "PA": {"type": "string"},
-                        "FC": {"type": "number"},
-                        "FR": {"type": "number"},
-                        "peso": {"type": "number"},
-                        "talla": {"type": "number"},
-                        "SpO2": {"type": "number"},
-                        "temperatura": {"type": "number"},
-                        "IMC": {"type": "number"},
-                        "glasgow": {"type": "number"}
-                    },
-                    "additionalProperties": False
-                },
-                "estadoGeneral": {"type": "string"},
-                "descripcionGeneral": {"type": "string"},
-                "sistemas": {
-                    "type": "object",
-                    "properties": {
-                        "piel": {"type": "string"},
-                        "tcs": {"type": "string"},
-                        "cabeza": {"type": "string"},
-                        "cuello": {"type": "string"},
-                        "torax": {"type": "string"},
-                        "pulmones": {"type": "string"},
-                        "corazon": {"type": "string"},
-                        "mamasAxilas": {"type": "string"},
-                        "abdomen": {"type": "string"},
-                        "genitoUrinario": {"type": "string"},
-                        "rectalPerianal": {"type": "string"},
-                        "extremidades": {"type": "string"},
-                        "vascularPeriferico": {"type": "string"},
-                        "neurologico": {"type": "string"}
-                    },
-                    "additionalProperties": False
-                }
-            },
-            "additionalProperties": False
-        },
-        "diagnosticos": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "nombre": {"type": "string"},
-                    "tipo": {"type": "string", "enum": ["presuntivo", "definitivo"]},
-                    "cie10": {"type": "string"}
-                },
-                "required": ["nombre"],
-                "additionalProperties": False
-            }
-        },
-        "tratamientos": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "medicamento": {"type": "string"},
-                    "dosisIndicacion": {"type": "string"},
-                    "gtin": {"type": "string"}
-                },
-                "required": ["medicamento"],
-                "additionalProperties": False
-            }
-        },
-        "firma": {
-            "type": "object",
-            "properties": {
-                "medico": {"type": "string"},
-                "colegiatura": {"type": "string"},
-                "fecha": {"type": "string"}
-            },
-            "additionalProperties": False
-        }
-    },
-    "additionalProperties": False
-}
-
-# Reglas mínimas que exigiremos (puedes ajustar)
-REQUIRED_KEYS = [
-    "afiliacion.motivoConsulta",
-    "anamnesis.sintomasPrincipales",
-    "diagnosticos",
-    "tratamientos"
-]
-
 # ------------------ Utilidades ------------------
 
 def compute_missing(form: Dict[str, Any]) -> List[str]:
@@ -234,7 +88,7 @@ def build_suggestions(missing: List[str]) -> List[str]:
     tips_map = {
         "afiliacion.motivoConsulta": "Indique el motivo de consulta.",
         "anamnesis.sintomasPrincipales": "Mencione los síntomas principales.",
-        "diagnosticos": "Registre al menos un diagnóstico (nombre, tipo y CIE-10 si es posible).",
+        "diagnosticos": "Registre al menos un diagnóstico (nombre, tipo y CIE‑10 si es posible).",
         "tratamientos": "Consigne al menos un tratamiento (medicamento y dosis/indicaciones).",
     }
     return [tips_map[m] for m in missing if m in tips_map]
@@ -272,84 +126,53 @@ async def stream_summary(ws: WebSocket, transcript: str):
         if delta:
             await ws.send_json({"type": "assistant_token", "delta": delta})
 
-async def extract_form(transcript: str) -> dict:
-    schema = {
-        "type": "object",
-        "properties": {
-            "afiliacion": {
-                "type": "object",
-                "properties": {
-                    "nombreCompleto": {"type": "string"},
-                    "edad": {"type":"object","properties":{"anios":{"type":["integer","null"]},"meses":{"type":["integer","null"]}}},
-                    "sexo": {"type": "string"},
-                    "dni": {"type": "string"},
-                    "grupoSangre": {"type": "string"},
-                    "fechaHora": {"type": "string"},
-                    "seguro": {"type": "string"},
-                    "tipoConsulta": {"type": "string"},
-                    "numeroSeguro": {"type": "string"},
-                    "motivoConsulta": {"type": "string"}
-                }
-            },
-            "anamnesis": {
-                "type":"object",
-                "properties":{
-                    "tiempoEnfermedad":{"type":"string"},
-                    "sintomasPrincipales":{"type":"array","items":{"type":"string"}},
-                    "relato":{"type":"string"},
-                    "funcionesBiologicas":{"type":"object","properties":{
-                        "apetito":{"type":"string"}, "sed":{"type":"string"}, "orina":{"type":"string"},
-                        "deposiciones":{"type":"string"}, "sueno":{"type":"string"}
-                    }},
-                    "antecedentes":{"type":"object","properties":{
-                        "personales":{"type":"array","items":{"type":"string"}},
-                        "padre":{"type":"array","items":{"type":"string"}},
-                        "madre":{"type":"array","items":{"type":"string"}}
-                    }},
-                    "alergias":{"type":"array","items":{"type":"string"}},
-                    "medicamentos":{"type":"array","items":{"type":"string"}}
-                }
-            },
-            "examenClinico":{
-                "type":"object",
-                "properties":{
-                    "signosVitales":{"type":"object","properties":{
-                        "PA":{"type":"string"}, "FC":{"type":["number","null"]}, "FR":{"type":["number","null"]},
-                        "temperatura":{"type":["number","null"]}, "SpO2":{"type":["number","null"]},
-                        "IMC":{"type":["number","null"]}, "peso":{"type":["number","null"]},
-                        "talla":{"type":["number","null"]}, "glasgow":{"type":["number","null"]}
-                    }},
-                    "estadoGeneral":{"type":"string"},
-                    "descripcionGeneral":{"type":"string"},
-                    "sistemas":{"type":"object","properties":{
-                        "piel":{"type":"string"}, "tcs":{"type":"string"}, "cabeza":{"type":"string"},
-                        "cuello":{"type":"string"}, "torax":{"type":"string"}, "pulmones":{"type":"string"},
-                        "corazon":{"type":"string"}, "mamasAxilas":{"type":"string"}, "abdomen":{"type":"string"},
-                        "genitoUrinario":{"type":"string"}, "rectalPerianal":{"type":"string"},
-                        "extremidades":{"type":"string"}, "vascularPeriferico":{"type":"string"},
-                        "neurologico":{"type":"string"}
-                    }}
-                }
-            },
-            "diagnosticos":{"type":"array","items":{
-                "type":"object","properties":{
-                    "nombre":{"type":"string"},
-                    "tipo":{"type":"string","enum":["presuntivo","definitivo"]},
-                    "cie10":{"type":"string"}
-                }
-            }},
-            "tratamientos":{"type":"array","items":{
-                "type":"object","properties":{
-                    "medicamento":{"type":"string"},
-                    "dosisIndicacion":{"type":"string"},
-                    "gtin":{"type":"string"}
-                }
-            }},
-            "firma":{"type":"object","properties":{
-                "medico":{"type":"string"}, "colegiatura":{"type":"string"}, "fecha":{"type":"string"}
-            }}
-        }
+async def extract_form_incremental(current_form: dict, new_fragment: str) -> dict:
+    sys = (
+        "Eres un asistente clínico. Tu tarea es mantener un objeto JSON de historia clínica "
+        "ACTUALIZADO en tiempo real. "
+        "Tienes el objeto JSON actual y un fragmento de transcript. "
+        "Debes devolver un objeto JSON COMPLETO que siga EXACTAMENTE el schema proporcionado, "
+        "actualizado con la información del fragmento. "
+        "No inventes nada. Si el fragmento no aporta información nueva, devuelve el mismo objeto sin cambios. "
+        "Devuelve SOLO JSON válido."
+    )
+
+    user = {
+        "tarea": "Actualizar el formulario de historia clínica.",
+        "instrucciones": "Usa el schema para asegurarte de la estructura. Devuelve el objeto JSON completo.",
+        "json_schema": SCHEMA,
+        "current_form": current_form,
+        "new_fragment": new_fragment
     }
+
+    resp = client.chat.completions.create(
+        model=OPENAI_MODEL_JSON,
+        messages=[
+            {"role": "system", "content": sys},
+            {"role": "user", "content": json.dumps(user, ensure_ascii=False)}
+        ],
+        temperature=0,
+        response_format={"type": "json_object"}
+    )
+
+    content = resp.choices[0].message.content or "{}"
+    updated_form = json.loads(content)
+
+    # Deep merge in case GPT omits fields
+    def deep_merge(old: dict, new: dict) -> dict:
+        result = old.copy()
+        for k, v in new.items():
+            if isinstance(v, dict) and isinstance(result.get(k), dict):
+                result[k] = deep_merge(result[k], v)
+            else:
+                result[k] = v
+        return result
+
+    return deep_merge(current_form, updated_form)
+
+
+async def extract_form(transcript: str) -> dict:
+    schema = SCHEMA
 
     sys = (
         "Eres un asistente clínico. Extrae SOLO los datos mencionados del transcript y "
@@ -386,7 +209,7 @@ def health():
 async def ws_endpoint(ws: WebSocket):
     await ws.accept()
     session_id = ws.query_params.get("session") or "default"
-    state = sessions.setdefault(session_id, {"final": "", "partial": "", "last_form": {}})
+    state = sessions.setdefault(session_id, {"final": "", "partial": "", "last_form": {}, "json_state": {}})
 
     try:
         while True:
@@ -406,47 +229,26 @@ async def ws_endpoint(ws: WebSocket):
                     state["final"] = (state["final"] + sep + text + ". ").strip()
                     logger.info(f"[WS] final+= session={session_id} chunk_len={len(text)} total_chars={len(state['final'])}")
 
-                    # 1) Streaming de asistente
+                    # 1) Streaming de asistente (still inline, so doc sees live summary)
                     try:
-                        logger.info(f"[WS] calling stream_summary session={session_id} total_chars={len(state['final'])}")
-                        await stream_summary(ws, state["final"])
-                        logger.info(f"[WS] stream_summary finished session={session_id}")
+                        asyncio.create_task(stream_summary(ws, state["final"]))
                     except Exception as e:
                         logger.exception("[WS] stream_summary error")
                         await ws.send_json({"type": "error", "message": f"Stream error: {e}"})
 
-                    # 2) Extracción del formulario (structured outputs)
-                    try:
-                        form = await extract_form(state["final"])
-                        missing = compute_missing(form)
-                        suggestions = build_suggestions(missing)
-                        await ws.send_json({"type":"form_update","form":form,"missing":missing,"suggestions":suggestions})
-
-                        
-                    except Exception as e:
-                        await ws.send_json({"type": "error", "message": f"Extraction error: {e}"})
-
-                    try:
-                        deltas = compute_deltas(state.get("last_form", {}), form)
-                        if deltas:
-                            explained = await explain_deltas(state["final"], deltas)
-                            await ws.send_json({"type": "form_delta", "changes": explained})
-
-                            # (Opcional) ejemplo de insight simple
-                            sintomas = [c for c in explained if c["path"].startswith("anamnesis.sintomasPrincipales")]
-                            if sintomas:
-                                lista = []
-                                for c in sintomas:
-                                    v = c["value"]
-                                    if isinstance(v, list): lista += v
-                                    elif isinstance(v, str): lista.append(v)
-                                if lista:
-                                    await ws.send_json({"type": "insight", "label": "Síntomas", "text": "; ".join(dict.fromkeys(map(str, lista)))})
-                        state["last_form"] = form
-
-                    except Exception as ex:
-                        logger.warning("Delta error: %s", ex)
-                        await ws.send_json({"type": "error", "message": f"Delta error: {ex}"})
+                    # 2) Form extraction (run in background, don’t block loop)
+                    # Fire background task
+                    # asyncio.create_task(run_form_extraction(ws, session_id, state["final"], state.get("last_form", {})))
+                    new_fragment = text
+                    asyncio.create_task(
+                        run_incremental_update(
+                            ws,
+                            session_id,
+                            new_fragment,
+                            state.get("json_state", {}),
+                            state["final"]   # 🔹 pass transcript explicitly
+                        )
+                    )
 
     except WebSocketDisconnect:
         # cliente cerrado
@@ -457,8 +259,81 @@ async def ws_endpoint(ws: WebSocket):
         except Exception:
             pass
 
+async def run_incremental_update(
+    ws: WebSocket,
+    session_id: str,
+    fragment: str,
+    prev_form: dict,
+    transcript: str
+):
+    try:
+        updated_form = await extract_form_incremental(prev_form, fragment)
+        missing = compute_missing(updated_form)
+        suggestions = build_suggestions(missing)
+
+        await ws.send_json({
+            "type": "form_update",
+            "form": updated_form,
+            "missing": missing,
+            "suggestions": suggestions
+        })
+
+        # Compute deltas vs previous form
+        deltas = compute_deltas(prev_form, updated_form)
+        if deltas:
+            explained = await explain_deltas(transcript, deltas)
+            await ws.send_json({"type": "form_delta", "changes": explained})
+
+        # Update session state
+        sessions[session_id]["json_state"] = updated_form
+        sessions[session_id]["last_form"] = updated_form
+
+    except Exception as e:
+        logger.exception("[WS] incremental update error")
+        await ws.send_json({"type": "error", "message": f"Update error: {e}"})
 
 # helper: aplanar dict a rutas "a.b.c"
+async def run_form_extraction(ws: WebSocket, session_id: str, transcript: str, prev_form: dict):
+    try:
+        form = await extract_form(transcript)
+        missing = compute_missing(form)
+        suggestions = build_suggestions(missing)
+
+        await ws.send_json({
+            "type": "form_update",
+            "form": form,
+            "missing": missing,
+            "suggestions": suggestions
+        })
+
+        # Compute deltas vs previous form
+        deltas = compute_deltas(prev_form, form)
+        if deltas:
+            explained = await explain_deltas(transcript, deltas)
+            await ws.send_json({"type": "form_delta", "changes": explained})
+
+            sintomas = [c for c in explained if c["path"].startswith("anamnesis.sintomasPrincipales")]
+            if sintomas:
+                lista = []
+                for c in sintomas:
+                    v = c["value"]
+                    if isinstance(v, list): lista += v
+                    elif isinstance(v, str): lista.append(v)
+                if lista:
+                    await ws.send_json({
+                        "type": "insight",
+                        "label": "Síntomas",
+                        "text": "; ".join(dict.fromkeys(map(str, lista)))
+                    })
+
+        # update session state
+        sessions[session_id]["last_form"] = form
+
+    except Exception as e:
+        logger.exception("[WS] form extraction error")
+        await ws.send_json({"type": "error", "message": f"Extraction error: {e}"})
+
+
 def _flatten(d, prefix=""):
     out = {}
     if isinstance(d, dict):
