@@ -53,9 +53,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-if os.path.isdir(FRONTEND_PATH):
-    app.mount("/", StaticFiles(directory=FRONTEND_PATH, html=True), name="frontend")
-
 # Memoria simple por sesión (RAM)
 sessions: Dict[str, Dict[str, Any]] = {}
 
@@ -417,7 +414,12 @@ async def explain_deltas(transcript: str, changes: list[dict]) -> list[dict]:
         # Fallback silencioso: no trabar el flujo si la explicación falla
         logger.warning("explain_deltas failed: %s", ex)
         return [{"path": ch["path"], "value": ch.get("value"), "reason": "", "evidence": ""} for ch in changes]
+    
+
 # ------------------ Main ------------------
+
+if os.path.isdir(FRONTEND_PATH):
+    app.mount("/", StaticFiles(directory=FRONTEND_PATH, html=True), name="frontend")
 
 if __name__ == "__main__":
     # Permite: python server.py (útil en desarrollo)
