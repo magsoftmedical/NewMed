@@ -1,1 +1,1 @@
-web: uvicorn consult-ia.backend.server:app --host=0.0.0.0 --port=${PORT}
+web: uvicorn consultia.backend.server:app --host=0.0.0.0 --port=${PORT}
