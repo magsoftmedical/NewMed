@@ -1,0 +1,198 @@
+<div data-test="CONSULTA-ACTIVA" style="background:#1d4ed8;color:white;padding:6px;border-radius:8px;margin-bottom:8px">
+  ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ‚Â Estoy en <b>consultation-room.component.html</b>
+</div>
+
+<div class="container">
+  <div class="split">
+    <!-- ========== Columna IZQUIERDA: captura + IA ========== -->
+    <aside class="grid">
+      <!-- Estado de captura / Controles -->
+      <section class="card">
+        <div class="flex items-center justify-between gap-2">
+          <div class="muted flex items-center gap-2">
+              <span class="status-dot inline-block w-2.5 h-2.5 rounded-full" [style.background]="listening ? '#22c55e' : '#475569'"></span>
+
+            {{ listening ? 'EscuchandoÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦' : 'Detenido' }}
+          </div>
+          <div class="flex gap-2 flex-wrap">
+            <button class="btn btn-primary" (click)="startMic()" aria-label="Iniciar dictado">Iniciar</button>
+            <button class="btn btn-ghost" (click)="stopMic()" aria-label="Detener dictado">Detener</button>
+            <button class="btn btn-ghost" (click)="clearText()" aria-label="Limpiar transcripciÃƒÆ’Ã‚Â³n y formulario">Limpiar</button>
+            <button class="btn btn-ghost" (click)="downloadTxt()" aria-label="Descargar TXT">Exportar TXT</button>
+            <button class="btn btn-primary" (click)="exportPdf()" aria-label="Exportar PDF">Exportar PDF</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Barra VAD -->
+        <div class="h-2 bg-slate-800 rounded-md overflow-hidden" title="nivel de voz">
+          <div class="h-full bg-gradient-to-r from-indigo-500 to-fuchsia-400 transition-all" [style.width.%]="(level*100)"></div>
+        </div>
+
+        <!-- TranscripciÃƒÆ’Ã‚Â³n -->
+        <div class="mt-2 space-y-2">
+          <div class="muted italic whitespace-pre-wrap">{{ partialText }}</div>
+          <div class="whitespace-pre-wrap">{{ finalText }}</div>
+        </div>
+      </section>
+
+      <!-- Asistente IA -->
+      <section class="card">
+        <div class="card-title">Asistente IA (streaming)</div>
+        <p class="muted" *ngIf="!assistantLive">La IA completarÃƒÆ’Ã‚Â¡ campos y sugerencias en tiempo realÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</p>
+        <p *ngIf="assistantLive">{{ assistantLive }}</p>
+
+        <!-- Panel de deltas agrupado/estados -->
+        <ai-stream-panel></ai-stream-panel>
+      </section>
+
+      <!-- Sugerencias y faltantes -->
+      <section class="card">
+        <div class="card-title">Sugerencias IA</div>
+        <ul style="margin:0;padding-left:18px">
+          <li *ngFor="let s of suggestions">{{ s }}</li>
+        </ul>
+
+        <div class="divider"></div>
+
+        <div class="card-title" style="margin-top:8px">Campos faltantes</div>
+        <ul style="margin:0;padding-left:18px">
+          <li *ngFor="let m of missing">{{ m }}</li>
+        </ul>
+      </section>
+    </aside>
+
+    <!-- ========== Columna DERECHA: Historia ClÃƒÆ’Ã‚Â­nica (form) ========== -->
+    <main class="grid">
+      <form [formGroup]="hcForm" class="grid" style="gap:16px">
+        <!-- AfiliaciÃƒÆ’Ã‚Â³n -->
+        <fieldset formGroupName="afiliacion" class="card">
+          <legend><b>Afiliación</b></legend>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label class="text-sm text-slate-300">Nombre <input class="tw-input" formControlName="nombreCompleto" /></label>
+
+            <div formGroupName="edad" class="grid grid-cols-2 gap-2">
+              <label class="text-sm text-slate-300">Edad (años) <input class="tw-input" type="number" formControlName="anios" /></label>
+              <label class="text-sm text-slate-300">Edad (meses) <input class="tw-input" type="number" formControlName="meses" /></label>
+            </div>
+
+            <label class="text-sm text-slate-300">Sexo
+              <select class="tw-select" formControlName="sexo" aria-label="Sexo">
+                <option value="">-</option>
+                <option>M</option><option>F</option>
+                <option>Masculino</option><option>Femenino</option>
+              </select>
+            </label>
+
+            <label class="text-sm text-slate-300">DNI <input class="tw-input" formControlName="dni" /></label>
+            <label class="text-sm text-slate-300">Grupo <input class="tw-input" formControlName="grupoSangre" /></label>
+            <label class="text-sm text-slate-300">Fecha/Hora <input class="tw-input" formControlName="fechaHora" /></label>
+            <label class="text-sm text-slate-300">Seguro <input class="tw-input" formControlName="seguro" /></label>
+            <label class="text-sm text-slate-300">Tipo consulta <input class="tw-input" formControlName="tipoConsulta" /></label>
+            <label class="text-sm text-slate-300">Nº Seguro <input class="tw-input" formControlName="numeroSeguro" /></label>
+
+            <label class="text-sm text-slate-300 md:col-span-2">Motivo de consulta
+              <textarea class="tw-textarea" id="ctrl-motivo" formControlName="motivoConsulta" rows="2" aria-label="Motivo de consulta"></textarea>
+            </label>
+          </div>
+        </fieldset>
+        <!-- Anamnesis -->
+        <fieldset formGroupName="anamnesis" class="card">
+          <legend><b>Anamnesis</b></legend>
+
+          <label class="text-sm text-slate-300">Tiempo de enfermedad <input class="tw-input" formControlName="tiempoEnfermedad" /></label>
+
+          <label class="text-sm text-slate-300">SÃ¯Â¿Â½Ã¯Â¿Â½ntomas principales</label>
+          <div formArrayName="sintomasPrincipales">
+            <span class="badge" *ngFor="let s of hcForm.get('anamnesis.sintomasPrincipales')!.value">{{ s }}</span>
+          </div>
+
+          <label class="text-sm text-slate-300">Relato <textarea class="tw-textarea" formControlName="relato" rows="2"></textarea></label>
+
+          <div formGroupName="funcionesBiologicas" class="grid grid-cols-2 md:grid-cols-5 gap-2">
+            <label class="text-sm text-slate-300">Apetito <input class="tw-input" formControlName="apetito" /></label>
+            <label class="text-sm text-slate-300">Sed <input class="tw-input" formControlName="sed" /></label>
+            <label class="text-sm text-slate-300">Orina <input class="tw-input" formControlName="orina" /></label>
+            <label class="text-sm text-slate-300">Deposiciones <input class="tw-input" formControlName="deposiciones" /></label>
+            <label class="text-sm text-slate-300">SueÃ¯Â¿Â½Ã¯Â¿Â½o <input class="tw-input" formControlName="sueno" /></label>
+          </div>
+
+          <div formGroupName="antecedentes" class="grid" style="gap:8px">
+            <div><b>Personales:</b>
+              <span class="badge" *ngFor="let p of hcForm.get('anamnesis.antecedentes.personales')!.value">{{ p }}</span>
+            </div>
+            <div><b>Padre:</b>
+              <span class="badge" *ngFor="let p of hcForm.get('anamnesis.antecedentes.padre')!.value">{{ p }}</span>
+            </div>
+            <div><b>Madre:</b>
+              <span class="badge" *ngFor="let p of hcForm.get('anamnesis.antecedentes.madre')!.value">{{ p }}</span>
+            </div>
+            <div><b>Alergias:</b>
+              <span class="badge" *ngFor="let a of hcForm.get('anamnesis.alergias')!.value">{{ a }}</span>
+            </div>
+            <div><b>Medicamentos:</b>
+              <span class="badge" *ngFor="let m of hcForm.get('anamnesis.medicamentos')!.value">{{ m }}</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Examen clÃƒÆ’Ã‚Â­nico -->
+        <fieldset formGroupName="examenClinico" class="card">
+        <fieldset formGroupName="examenClinico" class="card">
+          <legend class="text-lg font-semibold"><b>Examen Clï¿½ï¿½nico</b></legend>
+          <div formGroupName="signosVitales" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label class="text-sm text-slate-300">PA <input class="tw-input" id="ctrl-pa" formControlName="PA" placeholder="120/80" /></label>
+            <label class="text-sm text-slate-300">FC <input class="tw-input" type="number" formControlName="FC" /></label>
+            <label class="text-sm text-slate-300">FR <input class="tw-input" type="number" formControlName="FR" /></label>
+            <label class="text-sm text-slate-300">Temp <input class="tw-input" id="ctrl-temp" type="number" formControlName="temperatura" /></label>
+            <label class="text-sm text-slate-300">SpO2 <input class="tw-input" type="number" formControlName="SpO2" /></label>
+            <label class="text-sm text-slate-300">IMC <input class="tw-input" type="number" formControlName="IMC" /></label>
+          </div>
+          <label class="text-sm text-slate-300">Estado general <input class="tw-input" formControlName="estadoGeneral" /></label>
+          <label class="text-sm text-slate-300">Descripciï¿½ï¿½n general <textarea class="tw-textarea" formControlName="descripcionGeneral" rows="2"></textarea></label>
+
+        <!-- DiagnÃƒÆ’Ã‚Â³sticos -->
+        <fieldset class="card">
+          <legend><b>DiagnÃƒÆ’Ã‚Â³sticos</b></legend>
+          <div formArrayName="diagnosticos" class="grid" style="gap:.5rem">
+            <div *ngFor="let dg of dxArr.controls; let i = index" [formGroupName]="i"
+                 style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem">
+              <label>Nombre <input formControlName="nombre" /></label>
+              <label>Tipo
+                <select formControlName="tipo">
+                  <option value="">-</option>
+                  <option>presuntivo</option><option>definitivo</option>
+                </select>
+              </label>
+              <label>CIE-10 <input formControlName="cie10" /></label>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Tratamientos -->
+        <fieldset class="card">
+          <legend><b>Tratamientos</b></legend>
+          <div formArrayName="tratamientos" class="grid" style="gap:.5rem">
+            <div *ngFor="let tt of ttoArr.controls; let i = index" [formGroupName]="i"
+                 style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem">
+              <label>Medicamento <input formControlName="medicamento" /></label>
+              <label>Dosis/IndicaciÃƒÆ’Ã‚Â³n <input formControlName="dosisIndicacion" /></label>
+              <label>GTIN <input formControlName="gtin" /></label>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Firma -->
+        <fieldset formGroupName="firma" class="card">
+          <legend><b>Firma</b></legend>
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem">
+            <label>MÃƒÆ’Ã‚Â©dico <input formControlName="medico" /></label>
+            <label>Colegiatura <input formControlName="colegiatura" /></label>
+            <label>Fecha <input formControlName="fecha" /></label>
+          </div>
+        </fieldset>
+      </form>
+    </main>
+  </div>
+</div>

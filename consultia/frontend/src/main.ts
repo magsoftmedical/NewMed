@@ -1,4 +1,8 @@
 import { bootstrapApplication } from '@angular/platform-browser';
-import { ConsultationRoomComponent } from './app/features/consultation-room/consultation-room.component';
+import { provideRouter } from '@angular/router';
+import { AppComponent } from './app/app.component';
+import { routes } from './app/app.routes';
 
-bootstrapApplication(ConsultationRoomComponent).catch(err => console.error(err));
+bootstrapApplication(AppComponent, {
+  providers: [provideRouter(routes)],
+}).catch(err => console.error(err));
