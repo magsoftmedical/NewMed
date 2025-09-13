@@ -1,133 +1,294 @@
-/* You can add global styles to this file, and also import other style files */
-/* ====== Theme base (global) ====== */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-
-:root{
-  /* ===== Paleta Medberos ===== */
-  // --bg:         #ffffff;   /* fondo general (púrpura muy oscuro) */
-  // --surface:    #1C1433;   /* cards */
-  // --surface-2:  #17102B;   /* listas / items */
-  // --bg: #F4F1FF;
-  --bg: #FAFAFA;
+/* ===== THEME TOKENS ===== */
+:root {
+  /* superfícies */
   --surface: #ffffff;
-  --surface-2: #ffffff
-  --border:     #2A1B4A;   /* bordes suaves */
-  // --text:       #F4F1FF;   /* texto principal (casi blanco violáceo) */
-  --text:       #222222;
-  --muted:      #C7B7FF;   /* texto secundario */
-  --text-secondary: #464545;
-  // --accent:     #7C3AED;   /* púrpura principal (botones, barras) */
-  --accent: #622493;
-  --accent-2:   #eadafa;   /* púrpura/fucsia para gradientes */
-  --warn:       #F59E0B;
-  --danger:     #EF4444;
+  --surface-2: #f8fafc;
+  --surface-3: #eef2ff;
 
-  /* sombra con tinte púrpura */
-  // --shadow: 0 8px 28px rgba(124, 58, 237, .22);
-  --shadow: 0 8px 28px #dfdce9;
+  /* texto */
+  --text: #0f172a;
+  --muted: #64748b;
+
+  /* bordes/sombras */
+  --border: #e5e7eb;
+  --shadow: 0 8px 24px rgba(2, 6, 23, .06);
+
+  /* acentos */
+  --accent: #6366f1;   /* indigo-500 */
+  --accent-2: #22c55e; /* green-500 */
+
+    /* tokens que usas pero no estaban definidos en modo claro */
+  --bg:     #f7f9fc;         /* fondo de página */
+  --fg:     #0f172a;         /* texto principal */
+  --card:   #ffffff;         /* fondo de las tarjetas */
+  --input:  #0f172a;         /* color de texto de inputs */
+  --ring:   #6366f1;         /* color de foco/acentos */
+  --shadow: 0 10px 18px rgba(2, 6, 23, .06); /* sombra suave en claro */
 }
 
-*{box-sizing:border-box}
-html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+:root.dark {
+  --bg:        #0b1020;
+  --fg:        #e5e7eb;
+  --muted:     #94a3b8;
+  --card:      #12172a;
+  --border:    #1f2937;
+  --input:     #e5e7eb;
+  --ring:      #6366f1;
+  --shadow:    0 10px 20px rgba(0,0,0,.35);
+}
 
-/* utilidades */
-.container{max-width:1200px;margin:0 auto;padding:16px}
-.grid{display:grid;gap:16px}
-.split{display:grid;grid-template-columns:360px 1fr;gap:16px}
-@media (max-width:1100px){.split{grid-template-columns:1fr}}
+/* ===== GLOBALS ===== */
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, sans-serif;
+  margin: 0;
+}
 
-.card{
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:14px;
-  box-shadow:var(--shadow);
-  padding:14px;
+/* ===== TOOLBAR ===== */
+.nm-toolbar {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.nm-toolbar-inner {
+  max-width: 1152px;
+  margin-inline: auto;
+  padding: .75rem 1rem;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;   /* avoid text clipping */
-  justify-content: flex-start;
-  min-height: auto;   
+  align-items: center;
+  justify-content: space-between;
 }
-.card-title{
-  font-weight: 700;
-  margin: 6px 0 10px;
-  line-height: 1.3;   /* prevents text cutoff */
-  white-space: normal; /* allow wrapping */
-  word-break: break-word;
+.nm-title {
+  font-weight: 600;
 }
 
-.btn{
-  // background:#111827;border:1px solid #374151;color:var(--text);
-  border:1px solid #374151;
-  color:var(--text);
-  padding:8px 12px;border-radius:10px;cursor:pointer;
-  transition:transform .06s ease, background .2s ease;
+/* ===== COMPONENTS ===== */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: var(--shadow);
 }
 
-
-.btn:hover{
-  box-shadow:var(--shadow);
+.card-title {
+  font-weight: 600;
+  margin-bottom: .5rem;
 }
-.btn:active{transform:translateY(1px)}
-.btn.highlight {background-color: var(--accent); color: white}
-.btn.ghost{background:transparent;border-color:#293345}
-.btn.warning{border-color:#7c5c00}
-.btn.danger{border-color:#7a2b2b}
 
-.badge{background:#1f2937;color:#cbd5e1;padding:2px 8px;border-radius:999px;font-size:.75rem}
-.muted{color:var(--text-secondary)}
-.divider{height:1px;background:#141a25;margin:8px 0}
-
-.progress{height:8px;background:#1f2230;border-radius:8px;overflow:hidden}
-.progress > .bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .25s}
-
-/* Inputs & selects */
-input,
-select,
-textarea {
+/* Inputs / Selects / Textareas */
+.tw-input, .tw-select, .tw-textarea {
   width: 100%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--input);
+  border-radius: 10px;
   padding: 8px 10px;
-  border: 1px solid var(--text);
-  border-radius: 10px;   /* rounded corners */
-  background: white;   /* dark background, matches cards */
-  color: var(--text);
-  font: inherit;
-  box-sizing: border-box;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+  font-size: .9rem;
+}
+.tw-textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+.tw-input:focus, .tw-select:focus, .tw-textarea:focus {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 20%, transparent);
+}
 
-  &:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.4);
+/* Botones */
+.btn {
+  border-radius: 10px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-size: .85rem;
+}
+.btn-primary {
+  background: var(--ring);
+  color: white;
+  border-color: var(--ring);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--fg);
+}
+
+/* Ocultar scrollbars opcional */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+/* ====== tarjetas limpias y compactas ====== */
+.nm-card{
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+.nm-card--compact{ padding: 12px; }
+.nm-card--tight   { padding: 8px; }           /* opcional más chico */
+
+.nm-card h2, .nm-card h3, .nm-card legend{
+  font-weight: 600; color: var(--fg); margin: 0 0 .5rem 0; line-height: 1.2;
+  font-size: 1rem;                           /* título más chico y uniforme */
+}
+
+/* densidad de formulario */
+.dense-form .tw-input, .dense-form .tw-select, .dense-form .tw-textarea{
+  padding: 6px 10px; font-size: .875rem;     /* compacto */
+}
+.dense-form label{ font-size: .85rem; color: var(--fg); }
+
+/* toolbar compacta */
+.toolbar-compact{ gap:.375rem; }
+.toolbar-compact .btn{ padding:4px 10px; font-size:.75rem; height:28px; }
+
+/* contenedor general y grillas superiores */
+.page-shell{ max-width: 1100px; margin-inline:auto; padding: 12px; }
+.top-grid{ display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 920px){ .top-grid{ grid-template-columns: 2fr 1fr; } }
+
+/* área de transcripción pequeña */
+.trans-box{ height: 140px; overflow: auto; border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 85%, #000 15%);
+  border: 1px solid var(--border); padding:10px; color: var(--fg);
+}
+
+/* barras divisorias sutiles */
+.divider { height:1px; background: var(--border); margin:.5rem 0; }
+/* ====== Fila superior fija: Transcripción izq (2fr) + IA der (1fr) ====== */
+.row-top{
+  display: grid;
+  gap: 16px;
+  align-items: start;
+}
+@media (min-width: 768px){           /* md breakpoint */
+  .row-top{
+    grid-template-columns: 2fr 1fr;  /* 2/3 + 1/3 */
   }
 }
 
-.form-grid {
-  display: grid;
-  gap: 0.75rem;
-  grid-template-columns: 1fr; /* default: single column */
-  width: 100%;
+/* Evita que algo sobreescriba el grid */
+.row-top > * { min-width: 340px; }       /* para que funcione truncate/overflow */
+/* ===== Indicador de estado (pill) ===== */
+.listening-pill{
+  display:inline-flex; align-items:center; gap:.4rem;
+  padding:2px 8px; border-radius:999px;
+  font-size:.75rem; line-height:1;
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  color: var(--fg); border:1px solid var(--border);
+}
+.listening-pill .dot{
+  width:8px; height:8px; border-radius:50%;
+  background:#475569; /* detenido */
+}
+.listening-pill.is-on{
+  background: color-mix(in srgb, #22c55e 12%, transparent);
+  border-color: color-mix(in srgb, #22c55e 40%, var(--border));
+}
+.listening-pill.is-on .dot{
+  background:#22c55e;
+  box-shadow:0 0 0 0 rgba(34,197,94,.6);
+  animation: pulse 1.3s ease-out infinite;
+}
+@keyframes pulse{
+  0%{ box-shadow:0 0 0 0 rgba(34,197,94,.6) }
+  70%{ box-shadow:0 0 0 8px rgba(34,197,94,0) }
+  100%{ box-shadow:0 0 0 0 rgba(34,197,94,0) }
 }
 
-.form-grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.form-grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.form-grid.cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+/* ===== Barra VAD ===== */
+.vad-bar{
+  height:6px; border-radius:6px; overflow:hidden;
+  background: var(--border);
+  margin: .25rem 0 .5rem 0;
+}
+:root.dark .vad-bar{ background:#1f2937; }
+.vad-bar .fill{
+  height:100%;
+  background: linear-gradient(90deg,#6366f1,#a855f7);
+  transition: width .12s linear;
+}
 
+/* ===== Caja de transcripción ===== */
+/* Enmarca la caja dentro del card (marco + padding propio) */
+.trans-shell{
+  padding: 8px 10px;               /* separa el textarea del borde del card */
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 94%, #000 6%); /* leve contraste */
+}
 
-/* Labels */
-label {
+/* Etiqueta encima */
+.trans-label{
+  display:block;
+  margin:.35rem 0 .4rem;
+  font-size:.8rem;
+  color:var(--muted);
+}
+
+/* Textarea: ancho al 100% pero SIN salirse y con scroll vertical */
+.trans-area{
+  display:block;
+  width: 100%;
+  max-width: 100%;                 /* nunca más ancho que el contenedor */
+  box-sizing: border-box;          /* padding/borde incluidos en el ancho */
+  height: 200px;                   /* fijo (ajusta si quieres) */
+  resize: none;                    /* no permitir estirar para mantener uniforme */
+  overflow: auto;
+  white-space: pre-wrap;           /* respetar saltos de línea */
+  overflow-wrap: break-word;       /* romper palabras largas */
+  line-height: 1.45;
+
+  /* look integrado */
+  background: var(--card);
+  color: inherit;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .65rem .75rem;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.08);
+}
+/* Hacer que el aside se comporte como columna flexible */
+.aside-ia{
   display: flex;
   flex-direction: column;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--text-secondary);
-  gap: 4px;
+  gap: 1rem;         /* separación entre las 2 tarjetas */
+  height: 100%;
+  min-height: 0;     /* importante para que los hijos con overflow funcionen */
 }
 
-/* Textarea tweak */
-textarea {
-  resize: vertical;
-  min-height: 60px;
-  border-radius: 12px;
+/* Los cards del aside son columnas; el segundo se estira */
+.aside-ia .card{
+  display: flex;
+  flex-direction: column;
+  min-height: 0;     /* permite que .scroll calcule bien su alto */
+}
+
+/* El contenedor interno que debe scrollear */
+.aside-ia .scroll{
+  flex: 1;           /* ocupa el resto del alto disponible */
+  min-height: 0;
+  overflow: auto;    /* scroll interno si el contenido crece */
+}
+
+/* grilla de dos columnas para el formulario */
+.form-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;          /* mobile: una columna */
+}
+@media (min-width: 920px) {
+  .form-grid { grid-template-columns: 1fr 1fr; }  /* desktop: 2 columnas */
+}
+
+/* compacta y estética (ya usas estas variables) */
+.nm-card      { background: var(--card); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); }
+.nm-card--compact { padding: 12px; }
+.dense-form label { font-size: .9rem; color: var(--fg); }
+/* Ajuste de inputs dentro de grillas para que no sobresalgan */
+fieldset .tw-input,
+fieldset .tw-textarea,
+fieldset .tw-select {
+  max-width: 100%;   /* nunca más ancho que su celda */
+  box-sizing: border-box;
 }

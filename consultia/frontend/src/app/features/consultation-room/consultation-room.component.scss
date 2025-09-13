@@ -43,32 +43,6 @@
   }
 }
 
-fieldset.card {
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 1rem; /* leaves room for content */
-  position: relative;
-}
-
-fieldset.card legend {
-  padding: 0 8px;
-  margin-left: 8px;
-  font-weight: 700;
-  line-height: 1.3;
-  color: var(--text);
-  /* background matches card so it doesn't "cut" through border */
-  background: var(--surface);
-  border-radius: 6px;
-}
-
-.listening {
-  background-color: --accent;
-}
-
-.stopped {
-  background-color: red;
-}
-
 .flash-fill {
   animation: flashFill 1.2s ease-out;
 }

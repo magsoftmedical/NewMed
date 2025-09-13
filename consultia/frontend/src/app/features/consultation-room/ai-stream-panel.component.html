@@ -2,30 +2,51 @@
   <header class="sticky">
     <div class="title">Asistente IA (streaming)</div>
 
+    <!-- Barra de progreso global -->
     <div class="progress">
-      <div class="bar" [style.width.%]="progress()"></div>
+      <!-- Usa la variable CSS --p; Angular le pasa el % -->
+      <div class="bar" [style.--p]="progress()"></div>
     </div>
+
     <div style="margin-top:4px;font-size:.85rem;opacity:.8">
-      {{ completed() }} / {{ total() }} campos completos
+      <span *ngIf="total() > 0; else emptyState">
+        {{ completed() }} / {{ total() }} campos completos
+      </span>
+      <ng-template #emptyState>Configura campos requeridos</ng-template>
     </div>
   </header>
 
+  <!-- Secciones provenientes de AiStreamState -->
   <section *ngFor="let s of sections">
-    <h3 class="section" (click)="toggle(s)">
-      {{ s }} <span class="count">{{ completedIn(s) }}</span>
+    <h3 class="section"
+        (click)="toggle(s)"
+        role="button"
+        [attr.aria-expanded]="open === s"
+        [attr.aria-controls]="'sec-' + s">
+      {{ s }}
+      <span class="count">{{ completedIn(s) }}</span>
     </h3>
 
-    <ul class="list" [class.collapsed]="open !== s">
-      <li *ngFor="let f of bySection(s); trackBy: trackByPath" [class.updated]="f.status==='updated'">
-        <span class="dot" [class.empty]="f.status==='empty'" [class.new]="f.status==='new'" [class.upd]="f.status==='updated'"></span>
+    <ul class="list"
+        [id]="'sec-' + s"
+        [class.collapsed]="open !== s">
+      <li *ngFor="let f of bySection(s); trackBy: trackByPath"
+          [class.updated]="f.status==='updated'">
+        <span class="dot"
+              [class.empty]="f.status==='empty'"
+              [class.new]="f.status==='new'"
+              [class.upd]="f.status==='updated'"></span>
+
         <span class="label">{{ f.label }}</span>
         <span class="value" [class.placeholder]="!f.value">{{ f.value || '—' }}</span>
+
         <button class="mini" (click)="clearField(f)" title="Limpiar">🗑️</button>
       </li>
     </ul>
   </section>
 
+  <!-- Acción -->
   <div style="display:flex;justify-content:flex-end;margin-top:8px">
-    <button class="btn ghost" (click)="clearAll()">Limpiar todo</button>
+    <button class="btn btn-ghost" (click)="clearAll()">Limpiar todo</button>
   </div>
 </div>

@@ -1,20 +1,20 @@
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
-<!-- * * * * * * * * * * * The content below * * * * * * * * * * * -->
-<!-- * * * * * * * * * * is only a placeholder * * * * * * * * * * -->
-<!-- * * * * * * * * * * and can be replaced.  * * * * * * * * * * -->
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
-<!-- * * * * * * * * * Delete the template below * * * * * * * * * -->
-<!-- * * * * * * * to get started with your project! * * * * * * * -->
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
+<header class="nm-toolbar">
+  <div class="nm-toolbar-inner">
+    <div class="flex items-center gap-2">
+      <!-- Logo -->
+      <img src="assets/logo.png" alt="Logo" class="h-6 w-auto" />
+      <span class="nm-title"></span>
+    </div>
+    <div class="flex items-center gap-2">
+      <a routerLink="/" class="btn btn-ghost" aria-label="Ir a inicio">Inicio</a>
+      <a routerLink="/nueva" class="btn btn-primary" aria-label="Crear nueva consulta">Nueva consulta</a>
+      <button class="btn btn-ghost" (click)="toggleTheme()">
+        {{ theme === 'dark' ? '☀️ Claro' : '🌙 Oscuro' }}
+      </button>
+    </div>
+  </div>
+</header>
 
-
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
-<!-- * * * * * * * * * * * The content above * * * * * * * * * * * * -->
-<!-- * * * * * * * * * * is only a placeholder * * * * * * * * * * * -->
-<!-- * * * * * * * * * * and can be replaced.  * * * * * * * * * * * -->
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
-<!-- * * * * * * * * * * End of Placeholder  * * * * * * * * * * * * -->
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
-
-
-<router-outlet />
+<main class="max-w-7xl mx-auto px-4 py-4">
+  <router-outlet />
+</main>
