@@ -21,7 +21,7 @@ jobs:
         env:
           HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
         run: |
-          git push https://heroku:${HEROKU_API_KEY}@git.heroku.com/medberos-tima-test.git heroku-deploy:main --force
+          git push https://heroku:${HEROKU_API_KEY}@git.heroku.com/medberos-tima.git heroku-deploy:main --force
           
 
       - name: Cleanup temp branch
