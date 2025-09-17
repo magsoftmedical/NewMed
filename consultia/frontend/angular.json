@@ -63,7 +63,10 @@
                   "replace": "src/environments/environment.ts",
                   "with": "src/environments/environment.test.ts"
                 }
-              ]
+              ],
+              "outputPath": "dist/consultia-test",
+              "optimization": true,
+              "outputHashing": "all"
             },
             "development": {
               "optimization": false,
