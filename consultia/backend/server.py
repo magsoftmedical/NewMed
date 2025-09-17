@@ -192,51 +192,6 @@ async def extract_form_incremental(session_id: str, new_fragment: str) -> dict:
 
     return updated_form
 
-# async def extract_form_incremental(current_form: dict, new_fragment: str) -> dict:
-#     sys = (
-#         "Eres un asistente clínico. Tu tarea es mantener un objeto JSON de historia clínica "
-#         "ACTUALIZADO en tiempo real. "
-#         "Tienes el objeto JSON actual y un fragmento de transcript. "
-#         "Debes devolver un objeto JSON COMPLETO que siga EXACTAMENTE el schema proporcionado, "
-#         "actualizado con la información del fragmento. "
-#         "No inventes nada. Si el fragmento no aporta información nueva, devuelve el mismo objeto sin cambios. "
-#         "Devuelve SOLO JSON válido."
-#     )
-
-#     user = {
-#         "tarea": "Actualizar el formulario de historia clínica.",
-#         "instrucciones": "Usa el schema para asegurarte de la estructura. Devuelve el objeto JSON completo.",
-#         "json_schema": SCHEMA,
-#         "current_form": current_form,
-#         "new_fragment": new_fragment
-#     }
-
-#     resp = client.chat.completions.create(
-#         model=OPENAI_MODEL_JSON,
-#         messages=[
-#             {"role": "system", "content": sys},
-#             {"role": "user", "content": json.dumps(user, ensure_ascii=False)}
-#         ],
-#         temperature=0,
-#         response_format={"type": "json_object"}
-#     )
-
-#     content = resp.choices[0].message.content or "{}"
-#     updated_form = json.loads(content)
-
-#     # Deep merge in case GPT omits fields
-#     def deep_merge(old: dict, new: dict) -> dict:
-#         result = old.copy()
-#         for k, v in new.items():
-#             if isinstance(v, dict) and isinstance(result.get(k), dict):
-#                 result[k] = deep_merge(result[k], v)
-#             else:
-#                 result[k] = v
-#         return result
-
-#     return deep_merge(current_form, updated_form)
-
-
 async def extract_form(transcript: str) -> dict:
     schema = SCHEMA
 
