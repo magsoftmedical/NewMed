@@ -221,6 +221,10 @@ async def extract_form(transcript: str) -> dict:
 
 # ------------------ Rutas ------------------
 
+@app.get("/")
+def root():
+    return {"message": "TIMA Backend is running"}
+
 @app.get("/health")
 def health():
     ok = bool(OPENAI_API_KEY)
