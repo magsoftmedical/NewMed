@@ -65,6 +65,11 @@
                 }
               ],
               "outputPath": "dist/consultia-test",
+              "index": "src/index.html",
+              "browser": "src/main.ts",
+              "polyfills": [
+                "zone.js"
+              ],
               "optimization": true,
               "outputHashing": "all"
             },
