@@ -128,22 +128,21 @@ async def stream_summary(ws: WebSocket, transcript: str):
         if delta:
             await ws.send_json({"type": "assistant_token", "delta": delta})
 
-async def extract_form_incremental(current_form: dict, new_fragment: str) -> dict:
+async def extract_form_patch(session_id: str, new_fragment: str) -> list[dict]:
+    state = sessions[session_id]
+
     sys = (
-        "Eres un asistente clínico. Tu tarea es mantener un objeto JSON de historia clínica "
-        "ACTUALIZADO en tiempo real. "
-        "Tienes el objeto JSON actual y un fragmento de transcript. "
-        "Debes devolver un objeto JSON COMPLETO que siga EXACTAMENTE el schema proporcionado, "
-        "actualizado con la información del fragmento. "
-        "No inventes nada. Si el fragmento no aporta información nueva, devuelve el mismo objeto sin cambios. "
-        "Devuelve SOLO JSON válido."
+        "Eres un asistente clínico. Tu tarea es mantener un objeto JSON de historia clínica actualizado.\n"
+        "Se te dará el estado actual del formulario y un fragmento de transcripción.\n"
+        "Devuelve SOLO un arreglo JSON con operaciones tipo JSON Patch (RFC6902).\n"
+        "Cada operación debe ser {op, path, value}.\n"
+        "Usa paths estilo /afiliacion/nombreCompleto, /anamnesis/sintomasPrincipales/- para agregar.\n"
+        "Si el fragmento no aporta información nueva, devuelve [].\n"
+        "Devuelve SOLO JSON válido, sin explicaciones."
     )
 
     user = {
-        "tarea": "Actualizar el formulario de historia clínica.",
-        "instrucciones": "Usa el schema para asegurarte de la estructura. Devuelve el objeto JSON completo.",
-        "json_schema": SCHEMA,
-        "current_form": current_form,
+        "current_form": state["json_state"],
         "new_fragment": new_fragment
     }
 
@@ -157,20 +156,85 @@ async def extract_form_incremental(current_form: dict, new_fragment: str) -> dic
         response_format={"type": "json_object"}
     )
 
+    content = resp.choices[0].message.content or "[]"
+    try:
+        patches = json.loads(content)
+        if not isinstance(patches, list):
+            patches = []
+    except Exception:
+        patches = []
+
+    return patches
+
+async def extract_form_incremental(session_id: str, new_fragment: str) -> dict:
+    state = sessions[session_id]
+
+    # append fragment as new user message
+    state["messages"].append({
+        "role": "user",
+        "content": f"NUEVO FRAGMENTO: {new_fragment}. "
+                   "Actualiza el objeto JSON en base a esto. "
+                   "Si no hay cambios, devuelve el mismo JSON."
+    })
+
+    resp = client.chat.completions.create(
+        model=OPENAI_MODEL_JSON,
+        messages=state["messages"],
+        temperature=0,
+        response_format={"type": "json_object"}
+    )
+
     content = resp.choices[0].message.content or "{}"
     updated_form = json.loads(content)
 
-    # Deep merge in case GPT omits fields
-    def deep_merge(old: dict, new: dict) -> dict:
-        result = old.copy()
-        for k, v in new.items():
-            if isinstance(v, dict) and isinstance(result.get(k), dict):
-                result[k] = deep_merge(result[k], v)
-            else:
-                result[k] = v
-        return result
+    # store the assistant's response in conversation for continuity
+    state["messages"].append({"role": "assistant", "content": content})
 
-    return deep_merge(current_form, updated_form)
+    return updated_form
+
+# async def extract_form_incremental(current_form: dict, new_fragment: str) -> dict:
+#     sys = (
+#         "Eres un asistente clínico. Tu tarea es mantener un objeto JSON de historia clínica "
+#         "ACTUALIZADO en tiempo real. "
+#         "Tienes el objeto JSON actual y un fragmento de transcript. "
+#         "Debes devolver un objeto JSON COMPLETO que siga EXACTAMENTE el schema proporcionado, "
+#         "actualizado con la información del fragmento. "
+#         "No inventes nada. Si el fragmento no aporta información nueva, devuelve el mismo objeto sin cambios. "
+#         "Devuelve SOLO JSON válido."
+#     )
+
+#     user = {
+#         "tarea": "Actualizar el formulario de historia clínica.",
+#         "instrucciones": "Usa el schema para asegurarte de la estructura. Devuelve el objeto JSON completo.",
+#         "json_schema": SCHEMA,
+#         "current_form": current_form,
+#         "new_fragment": new_fragment
+#     }
+
+#     resp = client.chat.completions.create(
+#         model=OPENAI_MODEL_JSON,
+#         messages=[
+#             {"role": "system", "content": sys},
+#             {"role": "user", "content": json.dumps(user, ensure_ascii=False)}
+#         ],
+#         temperature=0,
+#         response_format={"type": "json_object"}
+#     )
+
+#     content = resp.choices[0].message.content or "{}"
+#     updated_form = json.loads(content)
+
+#     # Deep merge in case GPT omits fields
+#     def deep_merge(old: dict, new: dict) -> dict:
+#         result = old.copy()
+#         for k, v in new.items():
+#             if isinstance(v, dict) and isinstance(result.get(k), dict):
+#                 result[k] = deep_merge(result[k], v)
+#             else:
+#                 result[k] = v
+#         return result
+
+#     return deep_merge(current_form, updated_form)
 
 
 async def extract_form(transcript: str) -> dict:
@@ -211,7 +275,33 @@ def health():
 async def ws_endpoint(ws: WebSocket):
     await ws.accept()
     session_id = ws.query_params.get("session") or "default"
-    state = sessions.setdefault(session_id, {"final": "", "partial": "", "last_form": {}, "json_state": {}})
+    state = sessions.setdefault(session_id, 
+        {
+            "final": "", 
+            "partial": "", 
+            # "last_form": {}, 
+            # "json_state": {},
+            "json_state": make_blank_from_schema(SCHEMA),
+            "last_form": make_blank_from_schema(SCHEMA),
+            "messages": []
+        }
+    )
+
+    if not state["messages"]:  # first time
+        state["messages"] = [
+            {
+                "role": "system",
+                "content": (
+                    "Eres un asistente clínico. Tu tarea es mantener un objeto JSON de historia clínica "
+                    "actualizado en tiempo real. Devuelve SOLO JSON válido y sigue EXACTAMENTE este schema: "
+                    f"{json.dumps(SCHEMA, ensure_ascii=False)}"
+                )
+            },
+            {
+                "role": "assistant",
+                "content": json.dumps(state["json_state"], ensure_ascii=False) or "{}"
+            }
+        ]
 
     try:
         while True:
@@ -269,7 +359,10 @@ async def run_incremental_update(
     transcript: str
 ):
     try:
-        updated_form = await extract_form_incremental(prev_form, fragment)
+        # updated_form = await extract_form_incremental(prev_form, fragment)
+        # updated_form = await extract_form_incremental(session_id, fragment)
+        delta = await extract_form_delta(session_id, fragment)
+        updated_form = deep_merge(prev_form, delta)
         missing = compute_missing(updated_form)
         suggestions = build_suggestions(missing)
 
@@ -295,6 +388,15 @@ async def run_incremental_update(
         await ws.send_json({"type": "error", "message": f"Update error: {e}"})
 
 # helper: aplanar dict a rutas "a.b.c"
+def deep_merge(old: dict, new: dict) -> dict:
+    result = old.copy()
+    for k, v in new.items():
+        if isinstance(v, dict) and isinstance(result.get(k), dict):
+            result[k] = deep_merge(result[k], v)
+        else:
+            result[k] = v
+    return result
+
 async def run_form_extraction(ws: WebSocket, session_id: str, transcript: str, prev_form: dict):
     try:
         form = await extract_form(transcript)
@@ -335,6 +437,55 @@ async def run_form_extraction(ws: WebSocket, session_id: str, transcript: str, p
         logger.exception("[WS] form extraction error")
         await ws.send_json({"type": "error", "message": f"Extraction error: {e}"})
 
+async def extract_form_delta(session_id: str, new_fragment: str) -> dict:
+    """
+    Ask GPT to return only the minimal changes (delta JSON), not the full schema.
+    Example output: {"afiliacion": {"nombreCompleto": "Jimena Olivares"}}
+    """
+    state = sessions[session_id]
+
+    sys = (
+        "Eres un asistente que actualiza un objeto JSON de acuerdo a un schema dado.\n\n"
+
+        "Entradas:\n"
+        "  • El estado actual del objeto JSON.\n"
+        "  • Un fragmento de texto.\n"
+        "  • El JSON Schema completo, con descripciones de cada campo.\n\n"
+
+        "Instrucciones:\n"
+        "1. Devuelve SOLO un objeto JSON parcial con los campos que deben actualizarse basados en el fragmento.\n"
+        "   - Si no hay información nueva, devuelve {}.\n"
+        "2. Usa únicamente claves y estructuras que existan en el schema.\n"
+        "3. Lee las descripciones del schema para decidir el campo más adecuado. Si varios campos son relevantes, actualiza más de uno.\n"
+        "4. Respeta los tipos de datos definidos en el schema (string, number, array, object, enum, etc.).\n"
+        "5. Para arrays, agrega elementos en una lista.\n"
+        "6. No inventes claves ni devuelvas texto adicional fuera del JSON.\n"
+    )
+
+    user = {
+        "current_form": state["json_state"],
+        "new_fragment": new_fragment
+    }
+
+    resp = client.chat.completions.create(
+        model=OPENAI_MODEL_JSON,
+        messages=[
+            {"role": "system", "content": sys},
+            {"role": "user", "content": json.dumps(user, ensure_ascii=False)}
+        ],
+        temperature=0,
+        response_format={"type": "json_object"}
+    )
+
+    content = resp.choices[0].message.content or "{}"
+    try:
+        delta = json.loads(content)
+        if not isinstance(delta, dict):
+            delta = {}
+    except Exception:
+        delta = {}
+
+    return delta
 
 def _flatten(d, prefix=""):
     out = {}
@@ -415,6 +566,14 @@ async def explain_deltas(transcript: str, changes: list[dict]) -> list[dict]:
         logger.warning("explain_deltas failed: %s", ex)
         return [{"path": ch["path"], "value": ch.get("value"), "reason": "", "evidence": ""} for ch in changes]
     
+def make_blank_from_schema(schema: dict) -> Any:
+    t = schema.get("type")
+    if t == "object":
+        return {k: make_blank_from_schema(v) for k, v in schema.get("properties", {}).items()}
+    elif t == "array":
+        return []
+    else:
+        return None
 
 # ------------------ Main ------------------
 
