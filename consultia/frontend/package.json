@@ -6,8 +6,10 @@
     "start": "ng serve --proxy-config proxy.conf.json",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
+    "start:open": "ng serve --open",
     "test": "ng test",
-    "serve:ssr:consult-ia": "node dist/consult-ia/server/server.mjs"
+    "serve:ssr:consult-ia": "node dist/consult-ia/server/server.mjs",
+    "heroku-postbuild": "npm install && npm run build -- --configuration production"
   },
   "private": true,
   "dependencies": {
@@ -21,6 +23,8 @@
     "@angular/router": "^19.2.0",
     "@angular/ssr": "^19.2.15",
     "express": "^4.18.2",
+    "jspdf": "^3.0.2",
+    "jspdf-autotable": "^5.0.2",
     "lucide-angular": "^0.544.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
