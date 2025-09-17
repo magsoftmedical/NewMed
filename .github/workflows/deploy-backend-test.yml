@@ -23,6 +23,5 @@ jobs:
         run: |
           git push https://heroku:${HEROKU_API_KEY}@git.heroku.com/medberos-tima.git heroku-deploy:main --force
           
-
       - name: Cleanup temp branch
         run: git branch -D heroku-deploy
