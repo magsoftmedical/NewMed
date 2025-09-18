@@ -15,11 +15,11 @@
       "prefix": "nm",
       "architect": {
         "build": {
-          "builder": "@angular-devkit/build-angular:application",
+          "builder": "@angular-devkit/build-angular:browser",
           "options": {
             "outputPath": "dist/consultia",
             "index": "src/index.html",
-            "browser": "src/main.ts",
+            "main": "src/main.ts",
             "polyfills": [
               "zone.js"
             ],
@@ -29,17 +29,11 @@
               "src/favicon.ico",
               "src/assets",
               { "glob": "**/*", "input": "public" }
-            ]
-            ,
+            ],
             "styles": [
               "src/styles.scss"
             ],
-            "scripts": [],
-            "server": "src/main.server.ts",
-            "outputMode": "server",
-            "ssr": {
-              "entry": "src/server.ts"
-            }
+            "scripts": []
           },
           "configurations": {
             "production": {
@@ -55,6 +49,31 @@
                   "maximumError": "8kB"
                 }
               ],
+              "outputHashing": "all"
+            },
+            "test": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.test.ts"
+                }
+              ],
+              "outputPath": "dist/consultia-test",
+              "index": "src/index.html",
+              "main": "src/main.ts",
+              "polyfills": [
+                "zone.js"
+              ],
+              "assets": [
+                "src/favicon.ico",
+                "src/assets"
+              ],
+              "styles": [
+                "src/styles.scss"
+              ],
+              "scripts": [],
+              "inlineStyleLanguage": "scss",
+              "optimization": true,
               "outputHashing": "all"
             },
             "development": {
@@ -73,6 +92,9 @@
             },
             "development": {
               "buildTarget": "consult-ia:build:development"
+            },
+            "test": {
+              "buildTarget": "consult-ia:build:test"
             }
           },
           "defaultConfiguration": "development"
@@ -93,8 +115,7 @@
               "src/favicon.ico",
               "src/assets",
               { "glob": "**/*", "input": "public" }
-            ]
-            ,
+            ],
             "styles": [
               "src/styles.scss"
             ],

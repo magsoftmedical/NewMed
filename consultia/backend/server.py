@@ -17,7 +17,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from .constants import SCHEMA, REQUIRED_KEYS
+from constants import SCHEMA, REQUIRED_KEYS
 
 # SDK OpenAI nuevo (>=1.0)
 from openai import OpenAI
@@ -236,6 +236,7 @@ async def extract_form_incremental(session_id: str, new_fragment: str) -> dict:
 
 #     return deep_merge(current_form, updated_form)
 
+    return updated_form
 
 async def extract_form(transcript: str) -> dict:
     schema = SCHEMA
@@ -265,6 +266,10 @@ async def extract_form(transcript: str) -> dict:
     return json.loads(content)
 
 # ------------------ Rutas ------------------
+
+@app.get("/")
+def root():
+    return {"message": "TIMA Backend is running"}
 
 @app.get("/health")
 def health():

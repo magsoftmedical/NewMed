@@ -1,6 +1,7 @@
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 /** Alineado con el schema de Historia Clínica del backend */
 export interface HistoriaClinica {
@@ -55,26 +56,94 @@ export class AiStreamService {
   private isBrowser: boolean;
 
   // URL del WS: usa primero variable global (p. ej. inyectada vía environment), sino fallback
+  // private WS_URL: string =
+  //   (globalThis as any).__AI_WS_URL__ ||
+  //   (typeof import.meta !== 'undefined' && (import.meta as any).env?.NG_APP_WS_URL) ||
+  //   'ws://localhost:8001/ws';
   private WS_URL: string =
     (globalThis as any).__AI_WS_URL__ ||
     (typeof import.meta !== 'undefined' && (import.meta as any).env?.NG_APP_WS_URL) ||
-    'ws://localhost:8001/ws';
+    `${environment.wsBase}/ws`;
 
   // Observables públicos
   readonly aiText$ = new BehaviorSubject<string>('');
   readonly form$ = new BehaviorSubject<HistoriaClinica|null>(null);
-  readonly missing$ = new BehaviorSubject<string[]>([]);
-  readonly suggestions$ = new BehaviorSubject<string[]>([]);
+
   readonly status$ = new BehaviorSubject<AiWsStatus>('idle');
   readonly deltas$    = new BehaviorSubject<FormDelta[]>([]);
   readonly insights$  = new BehaviorSubject<InsightMsg | null>(null);
+
+    // --- NUEVO: progreso, faltantes y sugerencias coherentes ---
+  readonly progress$     = new BehaviorSubject<{ done: number; total: number }>({ done: 0, total: 0 });
+  readonly missing$      = new BehaviorSubject<string[]>([]);
+  readonly suggestions$  = new BehaviorSubject<string[]>([]);
   // Reconexión
   private reconnectAttempts = 0;
   private maxBackoffMs = 5000;
   private sessionId = '';
+  private REQUIRED_PATHS = [
+    'afiliacion.motivoConsulta',
+    'anamnesis.sintomasPrincipales',
+    'diagnosticos',   // FormArray
+    'tratamientos',   // FormArray
+  ];
 
+  private PRETTY: Record<string,string> = {
+    'afiliacion.motivoConsulta': 'Motivo de consulta',
+    'anamnesis.sintomasPrincipales': 'Síntomas principales',
+    'diagnosticos': 'diagnósticos',
+    'tratamientos': 'tratamientos',
+  };
   constructor(@Inject(PLATFORM_ID) platformId: Object) {
     this.isBrowser = isPlatformBrowser(platformId);
+  }
+  evaluate(formValue: any) {
+    if (!formValue) {
+      this.progress$.next({ done: 0, total: 0 });
+      this.missing$.next([]);
+      this.suggestions$.next([]);
+      return;
+    }
+
+    const total = this.REQUIRED_PATHS.length;
+    let done = 0;
+    const missing: string[] = [];
+
+    for (const path of this.REQUIRED_PATHS) {
+      const v = this.getByPath(formValue, path);
+      const ok = this.isFilled(v);
+      if (ok) done++; else missing.push(this.PRETTY[path] ?? path);
+    }
+
+    // Sugerencias simples derivadas de los faltantes (puedes sofisticarlas)
+    const suggestions: string[] = [];
+    if (missing.includes('Motivo de consulta')) {
+      suggestions.push('Indique el motivo de consulta.');
+    }
+    if (missing.includes('Síntomas principales')) {
+      suggestions.push('Mencione los síntomas principales.');
+    }
+    if (missing.includes('diagnósticos')) {
+      suggestions.push('Registre al menos un diagnóstico (nombre, tipo y CIE-10 si es posible).');
+    }
+    if (missing.includes('tratamientos')) {
+      suggestions.push('Consigne al menos un tratamiento (medicamento y dosis/indicaciones).');
+    }
+
+    this.progress$.next({ done, total });
+    this.missing$.next(missing);
+    this.suggestions$.next(suggestions);
+  }
+
+    private getByPath(obj: any, path: string) {
+    return path.split('.').reduce((acc, k) => (acc ? acc[k] : undefined), obj);
+  }
+  private isFilled(v: any): boolean {
+    if (v === null || v === undefined) return false;
+    if (Array.isArray(v)) return v.length > 0;
+    if (typeof v === 'string') return v.trim().length > 0;
+    if (typeof v === 'object') return Object.keys(v).length > 0;
+    return true;
   }
 
   /** Abre la conexión WebSocket (solo en navegador) */

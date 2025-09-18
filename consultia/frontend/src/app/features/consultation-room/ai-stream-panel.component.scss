@@ -1,62 +1,99 @@
-.panel{ display:grid; gap:12px; }
+﻿/* ai-stream-panel.component.scss */
+/* El panel usa variables del tema; nada hardcodeado */
+:host { display: block; }
 
+/* Contenedor del panel (interno a la card) */
+.panel {
+  display: grid;
+  gap: 12px;
+}
+
+/* Header del panel (antes .sticky con gradiente fijo) */
 .sticky{
-  // background: linear-gradient(90deg,#0f172a,#101827);
-  background: linear-gradient(90deg,--muted,--accent-2);
-  padding:10px; border-radius:12px; border:1px solid var(--border);
+  background: color-mix(in srgb, var(--card) 96%, #000 4%);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
 }
-.title{ font-weight:700; margin-bottom:6px; }
+.title{ font-weight: 700; margin-bottom: 6px; color: var(--fg); }
 
-/* Barra de progreso local */
-.progress{ height:8px; background:#1f2230; border-radius:8px; overflow:hidden; }
-.progress > .bar{
-  height:100%;
-  background: linear-gradient(90deg, var(--accent, #3b82f6), var(--accent-2, #22c55e));
-  transition: width .25s;
+/* Barra de progreso (pista y relleno con tokens) */
+.progress{
+  height: 8px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--card) 85%, var(--border) 15%);
+  border: 1px solid var(--border);
 }
-.progress span{ display:block; margin-top:4px; font-size:.8rem; color:var(--muted,#94a3b8); }
+.progress .bar{
+  height: 100%;
+  width: calc(var(--p, 0) * 1%);
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width .25s ease;
+}
 
-/* Secciones */
+/* Sección plegable */
 .section{
-  cursor:pointer; display:flex; align-items:center; justify-content:space-between;
-  padding:8px 6px; border-bottom:1px solid #141a25; user-select:none;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+  color: var(--fg);
 }
-.section:hover{ background:#0f1522; border-radius:8px; }
-
-/* Contador (antes @extend .badge) */
+.section:hover{
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  border-radius: 8px;
+}
 .count{
-  background:#1f2937; color:#cbd5e1;
-  padding:2px 8px; border-radius:999px; font-size:.75rem;
+  background: color-mix(in srgb, var(--fg) 10%, transparent);
+  color: var(--fg);
+  padding: 2px 8px; border-radius: 999px; font-size: .75rem;
+  border: 1px solid var(--border);
 }
 
 /* Lista de campos */
-.list{ list-style:none; margin:0; padding:0; border:1px solid var(--border,#1f2a3b); border-radius:12px; overflow:hidden; }
-.list.collapsed{ display:none; }
+.list{
+  list-style: none; margin: 0; padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px; overflow: hidden;
+  background: var(--card);
+}
+.list.collapsed{ display: none; }
 
 li{
-  display:grid; grid-template-columns:14px 1fr auto; gap:10px; align-items:center;
-  padding:8px 10px; background:#0f172a; border-bottom:1px solid #131b2a;
+  display: grid; grid-template-columns: 14px 1fr auto; gap: 10px; align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
 }
-li:last-child{ border-bottom:0; }
+li:last-child{ border-bottom: 0; }
 li.updated{ animation: glow 1.2s ease; }
-@keyframes glow{ from{ background:rgba(234,179,8,.12)} to{ background:transparent } }
+@keyframes glow{
+  from{ background: color-mix(in srgb, var(--accent) 12%, transparent) }
+  to  { background: transparent }
+}
 
-.dot{ width:10px;height:10px;border-radius:50%; background:#3a3a3a; }
-.dot.new{ background:#22c55e; }
-.dot.upd{ background:#eab308; }
-.dot.empty{ background:#6b7280; }
+/* Estado del punto */
+.dot{ width: 10px; height: 10px; border-radius: 50%; background: color-mix(in srgb, var(--fg) 25%, transparent); }
+.dot.new{ background: var(--accent-2); }
+.dot.upd{ background: #eab308; }        /* puedes crear --warn si quieres */
+.dot.empty{ background: #6b7280; }
 
-.label{ color:#e5e7eb; font-weight:600; }
+/* Etiquetas y valores */
+.label{ color: var(--fg); font-weight: 600; }
 .value{
-  color:#cbd5e1; max-width:58vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  background:#0b1220; padding:3px 8px; border-radius:6px; border:1px solid #162033;
+  color: var(--fg);
+  max-width: 58vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  background: color-mix(in srgb, var(--card) 94%, #000 6%);
+  padding: 3px 8px; border-radius: 6px; border: 1px solid var(--border);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
-.value.placeholder{ color:#6b7280; font-style:italic; }
+.value.placeholder{ color: var(--muted); font-style: italic; }
 
 /* Botón mini */
 .mini{
-  background:transparent; border:1px solid #273247; color:#cbd5e1;
-  border-radius:8px; padding:4px 8px; cursor:pointer;
+  background: transparent; border: 1px solid var(--border); color: var(--fg);
+  border-radius: 8px; padding: 4px 8px; cursor: pointer;
 }
-.mini:hover{ background:#172236; }
+.mini:hover{ background: color-mix(in srgb, var(--fg) 6%, transparent); }
