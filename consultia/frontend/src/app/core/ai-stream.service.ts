@@ -1,6 +1,7 @@
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 /** Alineado con el schema de Historia Clínica del backend */
 export interface HistoriaClinica {
@@ -55,10 +56,14 @@ export class AiStreamService {
   private isBrowser: boolean;
 
   // URL del WS: usa primero variable global (p. ej. inyectada vía environment), sino fallback
+  // private WS_URL: string =
+  //   (globalThis as any).__AI_WS_URL__ ||
+  //   (typeof import.meta !== 'undefined' && (import.meta as any).env?.NG_APP_WS_URL) ||
+  //   'ws://localhost:8001/ws';
   private WS_URL: string =
     (globalThis as any).__AI_WS_URL__ ||
     (typeof import.meta !== 'undefined' && (import.meta as any).env?.NG_APP_WS_URL) ||
-    'ws://localhost:8001/ws';
+    `${environment.wsBase}/ws`;
 
   // Observables públicos
   readonly aiText$ = new BehaviorSubject<string>('');
