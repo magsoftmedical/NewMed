@@ -1,7 +1,8 @@
-﻿import { Component, OnDestroy, OnInit, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnDestroy, OnInit, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { FormArray, FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
 
 import { WebSpeechService, WSPartial } from '../../core/web-speech.service';
 import { AiStreamService, HistoriaClinica } from '../../core/ai-stream.service';
@@ -11,11 +12,12 @@ import jsPDF from 'jspdf';
 import autoTable, { RowInput } from 'jspdf-autotable';
 import { IconsModule } from '../../icons.module'; // 👈 importa el puente
 import { debounceTime } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-consultation-room',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule,AiStreamPanelComponent,IconsModule ],
+  imports: [CommonModule, ReactiveFormsModule, AiStreamPanelComponent, IconsModule, HttpClientModule],
   templateUrl: './consultation-room.component.html',
   styleUrls: ['./consultation-room.component.scss'],
 })
@@ -32,9 +34,24 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
   missing: string[] = [];
   suggestions: string[] = [];
 
-  // Reactive Form (Historia ClÃ­nica)
+  // Tabs del formulario
+  activeTab: string = 'afiliacion';
+  tabs = [
+    { id: 'afiliacion', label: 'Afiliación', icon: '📋' },
+    { id: 'anamnesis', label: 'Anamnesis', icon: '🩺' },
+    { id: 'examenClinico', label: 'Examen Clínico', icon: '💓' },
+    { id: 'diagnosticos', label: 'Diagnósticos', icon: '🏷️' },
+    { id: 'tratamientos', label: 'Tratamientos', icon: '💊' },
+    { id: 'firma', label: 'Firma', icon: '✍️' }
+  ];
+
+  // Reactive Form (Historia Clínica)
   hcForm!: FormGroup;
   formData: any = {};
+
+  // Document upload
+  uploading = false;
+  extractedDataPreview = '';
 
   private subs: Subscription[] = [];
   private isBrowser: boolean;
@@ -43,20 +60,21 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
     private wspeech: WebSpeechService,
     public  ai: AiStreamService,
     private fb: FormBuilder,
+    private http: HttpClient,
     @Inject(PLATFORM_ID) platformId: Object
   ) {
     this.isBrowser = isPlatformBrowser(platformId);
   }
-  
-  // Feed de cambios / narraciÃ³n
+
+  // Feed de cambios / narración
   deltaFeed: { icon:string; title:string; desc:string; path:string; evidence?:string }[] = [];
   mapPathToTitle(path: string) {
-    if (path.startsWith('afiliacion.motivoConsulta')) return { title:'Motivo de consulta', icon:'ðŸ“' };
-    if (path.startsWith('anamnesis.sintomasPrincipales')) return { title:'SÃ­ntomas', icon:'ðŸ©º' };
-    if (path.startsWith('examenClinico.signosVitales')) return { title:'Signos vitales', icon:'â¤ï¸' };
-    if (path.startsWith('diagnosticos')) return { title:'DiagnÃ³stico', icon:'ðŸ·ï¸' };
-    if (path.startsWith('tratamientos')) return { title:'Tratamiento', icon:'ðŸ’Š' };
-    return { title: path, icon:'ðŸ“Œ' };
+    if (path.startsWith('afiliacion.motivoConsulta')) return { title:'Motivo de consulta', icon:'📋' };
+    if (path.startsWith('anamnesis.sintomasPrincipales')) return { title:'Síntomas', icon:'🩺' };
+    if (path.startsWith('examenClinico.signosVitales')) return { title:'Signos vitales', icon:'❤️' };
+    if (path.startsWith('diagnosticos')) return { title:'Diagnóstico', icon:'🏷️' };
+    if (path.startsWith('tratamientos')) return { title:'Tratamiento', icon:'💊' };
+    return { title: path, icon:'📌' };
   }
 
   ngOnInit(): void {
@@ -141,7 +159,7 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
     // 4) Suscripciones IA (solo navegador)
     if (this.isBrowser) {
       this.subs.push(
-        // OJO: si tu servicio se llama assistantText$, cambia esta lÃ­nea
+        // OJO: si tu servicio se llama assistantText$, cambia esta línea
         this.ai.aiText$.subscribe(t => (this.assistantLive = t || '')),
         this.ai.missing$.subscribe(m => (this.missing = m || [])),
         this.ai.suggestions$.subscribe(s => (this.suggestions = s || [])),
@@ -149,13 +167,13 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
         this.ai.deltas$.subscribe(changes => {
           (changes || []).forEach(ch => {
             const { title, icon } = this.mapPathToTitle(ch.path);
-            const desc = ch.reason?.trim() ? ch.reason : `ActualicÃ© ${ch.path}`;
+            const desc = ch.reason?.trim() ? ch.reason : `Actualicé ${ch.path}`;
             this.deltaFeed.unshift({ icon, title, desc, path: ch.path, evidence: ch.evidence });
             this.flashControl(ch.path);
           });
         }),
         this.ai.insights$.subscribe(info => {
-          if (info) this.deltaFeed.unshift({ icon: 'ðŸ’¡', title: info.label, desc: info.text, path: '', evidence: '' });
+          if (info) this.deltaFeed.unshift({ icon: '💡', title: info.label, desc: info.text, path: '', evidence: '' });
         }),
       );
     }
@@ -164,6 +182,66 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
   // ---------- Helpers Reactive ----------
   get dxArr(): FormArray { return this.hcForm.get('diagnosticos') as FormArray; }
   get ttoArr(): FormArray { return this.hcForm.get('tratamientos') as FormArray; }
+
+  // ---------- Métodos para Tabs ----------
+  setActiveTab(tabId: string) {
+    this.activeTab = tabId;
+  }
+
+  /** Cuenta campos completados en una sección */
+  getCompletedFieldsCount(section: string): number {
+    const group = this.hcForm.get(section);
+    if (!group) return 0;
+
+    // Para secciones que son FormArrays directamente (diagnosticos, tratamientos)
+    if (group instanceof FormArray) {
+      return group.length; // número de items agregados
+    }
+
+    let completed = 0;
+
+    const countFields = (ctrl: any): void => {
+      if (ctrl instanceof FormGroup) {
+        Object.keys(ctrl.controls).forEach(key => countFields(ctrl.get(key)));
+      } else if (ctrl instanceof FormArray) {
+        // Arrays anidados: contar si tienen elementos
+        if (ctrl.length > 0) completed++;
+      } else if (ctrl instanceof FormControl) {
+        const val = ctrl.value;
+        if (val !== null && val !== undefined && val !== '') completed++;
+      }
+    };
+
+    countFields(group);
+    return completed;
+  }
+
+  /** Cuenta total de campos en una sección */
+  getTotalFieldsCount(section: string): number {
+    const group = this.hcForm.get(section);
+    if (!group) return 0;
+
+    // Para secciones que son FormArrays directamente (diagnosticos, tratamientos)
+    if (group instanceof FormArray) {
+      // Si está vacío, mostrar "—" o similar, retornar 0 para que el badge muestre "X/—"
+      return group.length > 0 ? group.length : 0;
+    }
+
+    let total = 0;
+
+    const countFields = (ctrl: any): void => {
+      if (ctrl instanceof FormGroup) {
+        Object.keys(ctrl.controls).forEach(key => countFields(ctrl.get(key)));
+      } else if (ctrl instanceof FormArray) {
+        total++;
+      } else if (ctrl instanceof FormControl) {
+        total++;
+      }
+    };
+
+    countFields(group);
+    return total;
+  }
 
   addDiagnostico(item?: any) {
     this.dxArr.push(this.fb.group({
@@ -285,10 +363,10 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
   // --------------------------
 
   private textOrDash(v: any): string {
-    if (v === null || v === undefined) return 'â€”';
-    if (Array.isArray(v)) return v.length ? v.join(', ') : 'â€”';
+    if (v === null || v === undefined) return '—';
+    if (Array.isArray(v)) return v.length ? v.join(', ') : '—';
     const s = String(v).trim();
-    return s.length ? s : 'â€”';
+    return s.length ? s : '—';
   }
 
   private h1(doc: jsPDF, text: string, y: number): number {
@@ -343,67 +421,60 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
   // --------------------------
   exportPdf(): void {
     try {
+      // Obtener datos reales del formulario
+      const formValue = this.hcForm.getRawValue();
+
+      // Construir estructura de datos para el PDF
       const data = this.formData = {
-  afiliacion: {
-    nombreCompleto: "Ãlvaro Castro",
-    edad: 48,
-    meses: 6,
-    sexo: "M",
-    dni: "4040825",
-    grupoSangre: "O+",
-    fechaHora: "2025-09-03 15:00",
-    seguro: "Seguro Integral de Salud",
-    tipoConsulta: "Primera vez",
-    numeroSeguro: "SIS-123456"
-  },
-  motivoConsulta: "Paciente refiere resfriado, dolores estomacales y sarpullido en la mano.",
-  anamnesis: {
-    tiempoEnfermedad: "6 meses",
-    sintomasPrincipales: ["resfriado", "dolores estomacales", "sarpullido en la mano"],
-    relato: "Desde hace seis meses presenta molestias recurrentes, con empeoramiento en la Ãºltima semana.",
-    funcionesBiologicas: {
-      apetito: "Disminuido",
-      sed: "Normal",
-      orina: "Normal",
-      deposiciones: "Ligeramente blandas",
-      sueno: "Disminuido"
-    },
-    personales: {
-      padre: "Hipertenso",
-      madre: "DiabÃ©tica"
-    },
-    alergias: "Ninguna conocida",
-    medicamentos: "Paracetamol ocasional"
-  },
-  examenClinico: {
-    PA: "120/80",
-    FC: 80,
-    FR: 18,
-    temperatura: "37.8 Â°C",
-    SpO2: "96%",
-    IMC: "24.5",
-    estadoGeneral: "Consciente, orientado",
-    descripcionGeneral: "Apariencia decaÃ­da, sin signos de deshidrataciÃ³n severa"
-  },
-  diagnosticos: [
-    { nombre: "Resfriado comÃºn", cie10: "J00", tipo: "Presuntivo" },
-    { nombre: "Dermatitis alÃ©rgica", cie10: "L23", tipo: "Diferencial" }
-  ],
-  examenes: [
-    { nombre: "Hemograma completo", cpt: "85025", indicaciones: "Evaluar infecciÃ³n" },
-    { nombre: "Examen de orina", cpt: "81001", indicaciones: "Descartar anomalÃ­as" }
-  ],
-  tratamientos: [
-    { medicamento: "Ibuprofeno 400mg", dosis: "Cada 8h por 5 dÃ­as", cpt: "J8499" },
-    { medicamento: "Loratadina 10mg", dosis: "1 diaria por 7 dÃ­as", cpt: "J8499" }
-  ],
-  interconsultas: [
-    { especialidad: "DermatologÃ­a", motivo: "Evaluar sarpullido persistente" }
-  ],
-  sugerenciasIA: "Considerar exÃ¡menes adicionales si persisten los sÃ­ntomas.",
-  camposFaltantes: ["Antecedentes quirÃºrgicos"]
-};
-;
+        afiliacion: {
+          nombreCompleto: formValue.afiliacion?.nombreCompleto || '',
+          edad: formValue.afiliacion?.edad?.anios || null,
+          meses: formValue.afiliacion?.edad?.meses || null,
+          sexo: formValue.afiliacion?.sexo || '',
+          dni: formValue.afiliacion?.dni || '',
+          grupoSangre: formValue.afiliacion?.grupoSangre || '',
+          fechaHora: formValue.afiliacion?.fechaHora || '',
+          seguro: formValue.afiliacion?.seguro || '',
+          tipoConsulta: formValue.afiliacion?.tipoConsulta || '',
+          numeroSeguro: formValue.afiliacion?.numeroSeguro || ''
+        },
+        motivoConsulta: formValue.afiliacion?.motivoConsulta || '',
+        anamnesis: {
+          tiempoEnfermedad: formValue.anamnesis?.tiempoEnfermedad || '',
+          sintomasPrincipales: formValue.anamnesis?.sintomasPrincipales || [],
+          relato: formValue.anamnesis?.relato || '',
+          funcionesBiologicas: {
+            apetito: formValue.anamnesis?.funcionesBiologicas?.apetito || '',
+            sed: formValue.anamnesis?.funcionesBiologicas?.sed || '',
+            orina: formValue.anamnesis?.funcionesBiologicas?.orina || '',
+            deposiciones: formValue.anamnesis?.funcionesBiologicas?.deposiciones || '',
+            sueno: formValue.anamnesis?.funcionesBiologicas?.sueno || ''
+          },
+          personales: {
+            padre: formValue.anamnesis?.antecedentes?.padre || [],
+            madre: formValue.anamnesis?.antecedentes?.madre || []
+          },
+          alergias: formValue.anamnesis?.alergias || [],
+          medicamentos: formValue.anamnesis?.medicamentos || []
+        },
+        examenClinico: {
+          PA: formValue.examenClinico?.signosVitales?.PA || '',
+          FC: formValue.examenClinico?.signosVitales?.FC || null,
+          FR: formValue.examenClinico?.signosVitales?.FR || null,
+          temperatura: formValue.examenClinico?.signosVitales?.temperatura || '',
+          SpO2: formValue.examenClinico?.signosVitales?.SpO2 || '',
+          IMC: formValue.examenClinico?.signosVitales?.IMC || '',
+          estadoGeneral: formValue.examenClinico?.estadoGeneral || '',
+          descripcionGeneral: formValue.examenClinico?.descripcionGeneral || ''
+        },
+        diagnosticos: formValue.diagnosticos || [],
+        examenes: formValue.examenes || [],
+        tratamientos: formValue.tratamientos || [],
+        interconsultas: formValue.interconsultas || [],
+        sugerenciasIA: '',
+        camposFaltantes: []
+      };
+
       const afiliacion = data.afiliacion || {};
       const anamnesis = data.anamnesis || {};
       const funcionesBio = anamnesis.funcionesBiologicas || {};
@@ -420,7 +491,7 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
       // Encabezado
       doc.setFontSize(18);
       doc.setFont('times', 'bold');
-      doc.text('Historia ClÃ­nica â€“ Resumen de Consulta', 14, y);
+      doc.text('Historia Clínica — Resumen de Consulta', 14, y);
       y += 6;
 
       doc.setFontSize(10);
@@ -429,14 +500,14 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
       doc.text(`Generado: ${ahora.toLocaleString()}`, 14, y);
       y += 6;
 
-      // (Opcional) Logo de tu clÃ­nica:
+      // (Opcional) Logo de tu clínica:
       // doc.addImage(base64Logo, 'PNG', 160, 10, 35, 12);
 
       y = this.ensurePage(doc, y, 14);
-      y = this.h1(doc, 'AfiliaciÃ³n', y);
+      y = this.h1(doc, 'Afiliación', y);
 
       y = this.fieldLine(doc, 'Nombre', afiliacion.nombreCompleto, y);
-      const edadTxt = afiliacion.edad != null ? `${afiliacion.edad} aÃ±os` : 'â€”';
+      const edadTxt = afiliacion.edad != null ? `${afiliacion.edad} años` : '—';
       const mesesTxt = afiliacion.meses != null ? ` / ${afiliacion.meses} meses` : '';
       y = this.fieldLine(doc, 'Edad', `${edadTxt}${mesesTxt}`, y);
       y = this.fieldLine(doc, 'Sexo', afiliacion.sexo, y);
@@ -445,22 +516,22 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
       y = this.fieldLine(doc, 'Fecha/Hora', afiliacion.fechaHora, y);
       y = this.fieldLine(doc, 'Seguro', afiliacion.seguro, y);
       y = this.fieldLine(doc, 'Tipo consulta', afiliacion.tipoConsulta, y);
-      y = this.fieldLine(doc, 'NÂ° Seguro', afiliacion.numeroSeguro, y);
+      y = this.fieldLine(doc, 'N° Seguro', afiliacion.numeroSeguro, y);
       y = this.fieldLine(doc, 'Motivo de consulta', data.motivoConsulta, y);
 
       y = this.ensurePage(doc, y, 14);
       y = this.h1(doc, 'Anamnesis', y);
 
       y = this.fieldLine(doc, 'Tiempo de enfermedad', anamnesis.tiempoEnfermedad, y);
-      y = this.fieldLine(doc, 'SÃ­ntomas principales', anamnesis.sintomasPrincipales, y);
+      y = this.fieldLine(doc, 'Síntomas principales', anamnesis.sintomasPrincipales, y);
       y = this.fieldLine(doc, 'Relato', anamnesis.relato, y);
 
-      y = this.h2(doc, 'Funciones biolÃ³gicas', y);
+      y = this.h2(doc, 'Funciones biológicas', y);
       y = this.fieldLine(doc, 'Apetito', funcionesBio.apetito, y);
       y = this.fieldLine(doc, 'Sed', funcionesBio.sed, y);
       y = this.fieldLine(doc, 'Orina', funcionesBio.orina, y);
       y = this.fieldLine(doc, 'Deposiciones', funcionesBio.deposiciones, y);
-      y = this.fieldLine(doc, 'SueÃ±o', funcionesBio.sueno, y);
+      y = this.fieldLine(doc, 'Sueño', funcionesBio.sueno, y);
 
       y = this.h2(doc, 'Antecedentes / Personales', y);
       y = this.fieldLine(doc, 'Padre', personales.padre, y);
@@ -469,7 +540,7 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
       y = this.fieldLine(doc, 'Medicamentos', anamnesis.medicamentos, y);
 
       y = this.ensurePage(doc, y, 14);
-      y = this.h1(doc, 'Examen ClÃ­nico', y);
+      y = this.h1(doc, 'Examen Clínico', y);
       // Vitals en tabla
       const vitals: RowInput[] = [[
         this.textOrDash(examen.PA),
@@ -492,12 +563,12 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
 
       y = (doc as any).lastAutoTable.finalY + 6;
       y = this.fieldLine(doc, 'Estado general', examen.estadoGeneral, y);
-      y = this.fieldLine(doc, 'DescripciÃ³n general', examen.descripcionGeneral, y);
+      y = this.fieldLine(doc, 'Descripción general', examen.descripcionGeneral, y);
 
-      // DiagnÃ³sticos (CIE-10)
+      // Diagnósticos (CIE-10)
       if (diagnosticos && diagnosticos.length) {
         y = this.ensurePage(doc, y, 18);
-        y = this.h1(doc, 'DiagnÃ³sticos (CIE-10)', y);
+        y = this.h1(doc, 'Diagnósticos (CIE-10)', y);
         const bodyDiag: RowInput[] = diagnosticos.map((d: any, i: number) => ([
           String(i + 1),
           this.textOrDash(d.nombre || d.descripcion || d.label),
@@ -505,7 +576,7 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
           this.textOrDash(d.tipo)
         ]));
         autoTable(doc, {
-          head: [['#', 'DiagnÃ³stico', 'CIE-10', 'Tipo']],
+          head: [['#', 'Diagnóstico', 'CIE-10', 'Tipo']],
           body: bodyDiag,
           startY: y,
           theme: 'grid',
@@ -516,10 +587,10 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
         y = (doc as any).lastAutoTable.finalY + 6;
       }
 
-      // ExÃ¡menes (CPT)
+      // Exámenes (CPT)
       if (examenes && examenes.length) {
         y = this.ensurePage(doc, y, 18);
-        y = this.h1(doc, 'ExÃ¡menes (CPT)', y);
+        y = this.h1(doc, 'Exámenes (CPT)', y);
         const bodyEx: RowInput[] = examenes.map((e: any, i: number) => ([
           String(i + 1),
           this.textOrDash(e.nombre || e.descripcion || e.label),
@@ -538,7 +609,7 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
         y = (doc as any).lastAutoTable.finalY + 6;
       }
 
-      // Tratamientos (CPT/medicaciÃ³n)
+      // Tratamientos (CPT/medicación)
       if (tratamientos && tratamientos.length) {
         y = this.ensurePage(doc, y, 18);
         y = this.h1(doc, 'Tratamientos', y);
@@ -549,7 +620,7 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
           this.textOrDash(t.cpt || t.codigo)
         ]));
         autoTable(doc, {
-          head: [['#', 'Medicamento/Procedimiento', 'Dosis/Indicaciones', 'CPT/CÃ³digo']],
+          head: [['#', 'Medicamento/Procedimiento', 'Dosis/Indicaciones', 'CPT/Código']],
           body: bodyTto,
           startY: y,
           theme: 'grid',
@@ -605,10 +676,109 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
 
     } catch (err) {
       console.error('Error exportando PDF', err);
-      alert('No se pudo exportar el PDF. Revisa la consola para mÃ¡s detalles.');
+      alert('No se pudo exportar el PDF. Revisa la consola para más detalles.');
     }
   }
 
+  // ---------- Document Upload & Extraction ----------
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    this.uploadAndExtractDocument(file);
+
+    // Reset input para permitir subir el mismo archivo de nuevo
+    input.value = '';
+  }
+
+  private uploadAndExtractDocument(file: File): void {
+    if (!this.isBrowser) return;
+
+    // Validar tamaño (máximo 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      alert('El archivo es demasiado grande. Máximo 10MB.');
+      return;
+    }
+
+    // Validar tipo
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+    if (!validTypes.includes(file.type)) {
+      alert('Tipo de archivo no soportado. Usa JPG, PNG, GIF, WEBP o PDF.');
+      return;
+    }
+
+    this.uploading = true;
+
+    // Crear FormData
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Enviar al backend
+    const apiUrl = `${environment.apiBase}/extract-document`;
+
+    this.http.post<any>(apiUrl, formData).subscribe({
+      next: (response) => {
+        this.uploading = false;
+
+        if (response.success && response.data) {
+          console.log('[UPLOAD] Datos extraídos:', response.data);
+
+          // Aplicar datos al formulario
+          this.applyExtractedData(response.data);
+
+          // Guardar datos extraídos para mostrar en la tab Firma
+          this.extractedDataPreview = JSON.stringify(response.data, null, 2);
+
+          // Cambiar a la tab Firma para ver los datos
+          this.activeTab = 'firma';
+        } else {
+          console.error('[UPLOAD] Error en respuesta:', response);
+          alert('Error al procesar el documento: ' + (response.error || 'Error desconocido'));
+        }
+      },
+      error: (error) => {
+        this.uploading = false;
+        console.error('[UPLOAD] Error:', error);
+
+        let errorMsg = 'Error al procesar el documento.';
+        if (error.error?.error) {
+          errorMsg += ' ' + error.error.error;
+        } else if (error.message) {
+          errorMsg += ' ' + error.message;
+        }
+
+        alert(errorMsg);
+      }
+    });
+  }
+
+  private applyExtractedData(data: any): void {
+    try {
+      // Aplicar usando el mismo método que usa la IA
+      this.patchFormFromAI(data);
+
+      // Añadir mensaje al feed
+      this.deltaFeed.unshift({
+        icon: '📄',
+        title: 'Documento cargado',
+        desc: 'Se ha importado información desde el documento médico',
+        path: '',
+        evidence: ''
+      });
+
+      // Evaluar el formulario para actualizar contadores
+      this.ai.evaluate(this.hcForm.getRawValue());
+
+    } catch (error) {
+      console.error('[APPLY-DATA] Error aplicando datos:', error);
+      alert('Error al aplicar los datos extraídos al formulario.');
+    }
+  }
+
+  clearExtractedData(): void {
+    this.extractedDataPreview = '';
+  }
 
 }
-

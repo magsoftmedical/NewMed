@@ -8,16 +8,17 @@
 #   setx OPENAI_API_KEY "tu_api_key"   (Windows, cerrar/reabrir terminal)
 #   uvicorn server:app --host 0.0.0.0 --port 8001 --reload
 
-import os, json, asyncio
+import os, json, asyncio, base64, io
 from typing import Dict, Any, Optional, List
 import logging
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, logger
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, logger, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from constants import SCHEMA, REQUIRED_KEYS
+from PIL import Image
 
 # SDK OpenAI nuevo (>=1.0)
 from openai import OpenAI
@@ -87,6 +88,7 @@ def compute_missing(form: Dict[str, Any]) -> List[str]:
     return missing
 
 def build_suggestions(missing: List[str]) -> List[str]:
+    """Genera sugerencias basadas en campos faltantes (fallback antiguo)."""
     tips_map = {
         "afiliacion.motivoConsulta": "Indique el motivo de consulta.",
         "anamnesis.sintomasPrincipales": "Mencione los síntomas principales.",
@@ -95,38 +97,177 @@ def build_suggestions(missing: List[str]) -> List[str]:
     }
     return [tips_map[m] for m in missing if m in tips_map]
 
+async def generate_contextual_suggestions(transcript: str, current_form: dict, recent_fragment: str = "") -> List[str]:
+    """
+    Genera sugerencias CONTEXTUALES Y DINÁMICAS basadas en:
+    - Lo que se acaba de decir (recent_fragment)
+    - El contexto completo (transcript)
+    - El estado actual del formulario (current_form)
+
+    Las sugerencias son proactivas y ayudan al médico a completar la consulta.
+    """
+    missing = compute_missing(current_form)
+
+    # Mapeo amigable
+    missing_friendly_map = {
+        "afiliacion.motivoConsulta": "motivo de consulta",
+        "anamnesis.sintomasPrincipales": "síntomas principales",
+        "diagnosticos": "diagnóstico",
+        "tratamientos": "plan de tratamiento"
+    }
+
+    missing_friendly = [missing_friendly_map.get(m, m) for m in missing]
+
+    # Prompt para generar sugerencias contextuales
+    system = (
+        "Eres un asistente clínico inteligente. Tu tarea es generar 1-3 sugerencias CONTEXTUALES "
+        "para ayudar al médico a completar la historia clínica.\n\n"
+
+        "IMPORTANTE:\n"
+        "- Las sugerencias deben ser ESPECÍFICAS al contexto de lo que se está diciendo.\n"
+        "- NO solo decir 'falta X campo' - ser PROACTIVO y contextual.\n"
+        "- Basarte en lo que el médico acaba de decir para sugerir el siguiente paso lógico.\n"
+        "- Cada sugerencia debe ser breve (máximo 15 palabras) y accionable.\n\n"
+
+        "EJEMPLOS DE BUENAS SUGERENCIAS:\n"
+        "✓ 'Pregunte cuánto tiempo lleva con fiebre' (si mencionó fiebre)\n"
+        "✓ 'Indague antecedentes de hipertensión familiar' (si mencionó presión alta)\n"
+        "✓ 'Considere solicitar hemograma completo' (si hay signos de infección)\n"
+        "✓ 'Registre peso y talla para calcular IMC' (si está en examen físico)\n"
+        "✓ 'Especifique dosis del paracetamol' (si mencionó paracetamol sin dosis)\n\n"
+
+        "EJEMPLOS DE MALAS SUGERENCIAS (evitar):\n"
+        "✗ 'Falta el diagnóstico' (muy genérico)\n"
+        "✗ 'Complete el formulario' (obvio y poco útil)\n"
+        "✗ 'Registre datos del paciente' (demasiado vago)\n\n"
+
+        "Devuelve UN ÚNICO objeto JSON con formato:\n"
+        '{"suggestions": ["sugerencia 1", "sugerencia 2", ...]}\n\n'
+
+        "Si no hay nada relevante que sugerir, devuelve: {\"suggestions\": []}"
+    )
+
+    # Construir contexto para la IA
+    context_parts = []
+
+    if recent_fragment:
+        context_parts.append(f"FRAGMENTO RECIENTE (lo que acaba de decir): {recent_fragment}")
+
+    context_parts.append(f"\nTRANSCRIPCIÓN COMPLETA:\n{transcript[-1500:]}")  # Últimos 1500 chars
+
+    context_parts.append(f"\n\nFORMULARIO ACTUAL (JSON):\n{json.dumps(current_form, ensure_ascii=False)}")
+
+    if missing_friendly:
+        context_parts.append(f"\n\nCAMPOS FALTANTES: {', '.join(missing_friendly)}")
+
+    user_content = "\n".join(context_parts)
+
+    try:
+        logger.info("[SUGGESTIONS] Generating contextual suggestions...")
+        resp = client.chat.completions.create(
+            model=OPENAI_MODEL_JSON,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_content}
+            ],
+            temperature=0.7,  # Un poco de creatividad para sugerencias variadas
+            max_tokens=200,
+            response_format={"type": "json_object"}
+        )
+
+        content = resp.choices[0].message.content or "{}"
+        data = json.loads(content)
+        suggestions = data.get("suggestions", [])
+
+        logger.info(f"[SUGGESTIONS] Generated {len(suggestions)} suggestions")
+        return suggestions
+
+    except Exception as e:
+        logger.exception("[SUGGESTIONS] Error generating contextual suggestions")
+        # Fallback: usar sugerencias basadas en campos faltantes
+        return build_suggestions(missing)
+
 # ------------------ OpenAI helpers ------------------
 
-async def stream_summary(ws: WebSocket, transcript: str):
-    """Envía respuesta de IA en streaming (token a token) a partir del transcript acumulado."""
+async def stream_summary(ws: WebSocket, transcript: str, current_form: dict = None):
+    """Envía SOLO el resumen narrativo de IA en streaming (token a token).
+
+    Este resumen debe ser puramente informativo sobre lo que se ha dicho,
+    SIN mencionar campos faltantes ni sugerencias (eso va separado).
+
+    Args:
+        ws: WebSocket connection
+        transcript: Transcript completo acumulado
+        current_form: Estado actual del formulario (para contexto interno)
+    """
+    # Prompt para resumen NARRATIVO puro
     system = (
-        "Eres un asistente clínico. Resume en 2–4 líneas lo más relevante del caso: "
-        "motivo de consulta, síntomas clave, hallazgos, y si falta información para la historia clínica. "
-        "No inventes datos y mantén tono profesional."
+        "Eres un asistente clínico. Resume de forma NARRATIVA lo que se ha dicho en la consulta.\n"
+        "- Resume en 2-3 oraciones máximo.\n"
+        "- Enfócate en lo que YA se mencionó (síntomas, hallazgos, impresiones).\n"
+        "- NO menciones lo que falta ni des sugerencias.\n"
+        "- Sé objetivo y clínico.\n"
+        "- Si no hay suficiente información, di 'Esperando más información de la consulta...'"
     )
+
+    user_content = transcript[-2000:]  # Últimos 2000 caracteres para evitar prompts muy largos
+
     # notifica al frontend que reinicia el stream
-    logger.info(f"[AI] stream_summary ENTER len={len(transcript)}") 
+    logger.info(f"[AI SUMMARY] stream_summary ENTER len={len(transcript)}")
+    logger.info(f"[AI SUMMARY] Generating narrative summary (no suggestions)")
 
     await ws.send_json({"type": "assistant_reset"})
 
-    logger.info("[AI] assistant_reset SENT")   
-    # llamada con stream
-    stream = client.chat.completions.create(
-        model=OPENAI_MODEL_TEXT,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": transcript}
-        ],
-        temperature=0.2,
-        stream=True
-    )
-    for chunk in stream:
-        try:
-            delta = chunk.choices[0].delta.get("content")
-        except Exception:
-            delta = None
-        if delta:
-            await ws.send_json({"type": "assistant_token", "delta": delta})
+    # OPCIÓN 1: Intentar con streaming real
+    USE_STREAMING = False  # Cambiar a True cuando funcione el streaming
+
+    if USE_STREAMING:
+        logger.info("[AI] Calling OpenAI WITH streaming...")
+        stream = client.chat.completions.create(
+            model=OPENAI_MODEL_TEXT,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_content}
+            ],
+            temperature=1.0,
+            max_tokens=150,
+            stream=True
+        )
+        logger.info("[AI] Stream created, reading tokens...")
+        token_count = 0
+        for chunk in stream:
+            try:
+                delta = chunk.choices[0].delta.get("content")
+            except Exception as e:
+                logger.warning(f"[AI] Error getting delta: {e}")
+                delta = None
+            if delta:
+                token_count += 1
+                logger.info(f"[AI] Token #{token_count}: {repr(delta[:30])}")
+                await ws.send_json({"type": "assistant_token", "delta": delta})
+
+        logger.info(f"[AI] COMPLETE. Sent {token_count} tokens")
+
+    else:
+        # OPCIÓN 2: SIN streaming - enviar todo de golpe
+        logger.info("[AI] Calling OpenAI WITHOUT streaming (fallback)...")
+        response = client.chat.completions.create(
+            model=OPENAI_MODEL_TEXT,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_content}
+            ],
+            temperature=1.0,
+            max_tokens=150
+        )
+
+        full_text = response.choices[0].message.content or ""
+        logger.info(f"[AI] Got response: {full_text[:100]}...")
+
+        # Enviar todo el texto de golpe
+        if full_text:
+            await ws.send_json({"type": "assistant_token", "delta": full_text})
+            logger.info(f"[AI] COMPLETE. Sent full response ({len(full_text)} chars)")
 
 async def extract_form_patch(session_id: str, new_fragment: str) -> list[dict]:
     state = sessions[session_id]
@@ -282,7 +423,9 @@ async def ws_endpoint(ws: WebSocket):
 
                     # 1) Streaming de asistente (still inline, so doc sees live summary)
                     try:
-                        asyncio.create_task(stream_summary(ws, state["final"]))
+                        # Pasar el formulario actual para que la IA sepa qué falta
+                        current_form = state.get("json_state", {})
+                        asyncio.create_task(stream_summary(ws, state["final"], current_form))
                     except Exception as e:
                         logger.exception("[WS] stream_summary error")
                         await ws.send_json({"type": "error", "message": f"Stream error: {e}"})
@@ -323,13 +466,19 @@ async def run_incremental_update(
         delta = await extract_form_delta(session_id, fragment)
         updated_form = deep_merge(prev_form, delta)
         missing = compute_missing(updated_form)
-        suggestions = build_suggestions(missing)
+
+        # NUEVO: Generar sugerencias contextuales dinámicas
+        suggestions = await generate_contextual_suggestions(
+            transcript=transcript,
+            current_form=updated_form,
+            recent_fragment=fragment
+        )
 
         await ws.send_json({
             "type": "form_update",
             "form": updated_form,
             "missing": missing,
-            "suggestions": suggestions
+            "suggestions": suggestions  # Ahora son sugerencias contextuales
         })
 
         # Compute deltas vs previous form
@@ -404,21 +553,36 @@ async def extract_form_delta(session_id: str, new_fragment: str) -> dict:
     state = sessions[session_id]
 
     sys = (
-        "Eres un asistente que actualiza un objeto JSON de acuerdo a un schema dado.\n\n"
+        "Eres un asistente médico especializado que actualiza una historia clínica en formato JSON.\n\n"
+
+        "IMPORTANTE: Debes interpretar el LENGUAJE NATURAL del médico, no solo términos técnicos exactos.\n\n"
+
+        "EJEMPLOS DE INTERPRETACIÓN:\n"
+        "- 'paciente viene por fiebre' → afiliacion.motivoConsulta: 'fiebre'\n"
+        "- 'tiene tos y dolor de cabeza' → anamnesis.sintomasPrincipales: ['tos', 'dolor de cabeza']\n"
+        "- 'parece ser una gripe' → diagnosticos: [{nombre: 'gripe', tipo: 'presuntivo'}]\n"
+        "- 'probable faringitis' → diagnosticos: [{nombre: 'faringitis', tipo: 'presuntivo'}]\n"
+        "- 'le voy a dar paracetamol' → tratamientos: [{medicamento: 'paracetamol'}]\n"
+        "- 'que tome una pastilla cada 8 horas' → tratamientos: [{dosisIndicacion: 'una pastilla cada 8 horas'}]\n"
+        "- 'presión 120 sobre 80' → examenClinico.signosVitales.PA: '120/80'\n"
+        "- 'temperatura treinta y ocho grados' → examenClinico.signosVitales.temperatura: 38\n\n"
 
         "Entradas:\n"
-        "  • El estado actual del objeto JSON.\n"
-        "  • Un fragmento de texto.\n"
-        "  • El JSON Schema completo, con descripciones de cada campo.\n\n"
+        "  • El estado actual del objeto JSON (historia clínica).\n"
+        "  • Un fragmento de texto dictado por el médico.\n"
+        "  • El JSON Schema completo, con descripciones detalladas de cada campo.\n\n"
 
         "Instrucciones:\n"
-        "1. Devuelve SOLO un objeto JSON parcial con los campos que deben actualizarse basados en el fragmento.\n"
+        "1. Interpreta el SENTIDO del texto, no busques palabras clave exactas.\n"
+        "2. Lee CUIDADOSAMENTE las descripciones del schema - contienen patrones de lenguaje natural a detectar.\n"
+        "3. Devuelve SOLO un objeto JSON parcial con los campos que deben actualizarse.\n"
         "   - Si no hay información nueva, devuelve {}.\n"
-        "2. Usa únicamente claves y estructuras que existan en el schema.\n"
-        "3. Lee las descripciones del schema para decidir el campo más adecuado. Si varios campos son relevantes, actualiza más de uno.\n"
-        "4. Respeta los tipos de datos definidos en el schema (string, number, array, object, enum, etc.).\n"
-        "5. Para arrays, agrega elementos en una lista.\n"
-        "6. No inventes claves ni devuelvas texto adicional fuera del JSON.\n"
+        "4. Usa únicamente claves y estructuras que existan en el schema.\n"
+        "5. Si varios campos son relevantes para el mismo texto, actualiza todos.\n"
+        "6. Respeta los tipos de datos definidos en el schema (string, number, array, object, enum).\n"
+        "7. Para arrays: agrega nuevos elementos sin borrar los existentes.\n"
+        "8. Para enums: si no se especifica, usa el valor por defecto sugerido en la descripción.\n"
+        "9. No inventes claves ni devuelvas texto adicional fuera del JSON.\n"
     )
 
     user = {
@@ -533,6 +697,228 @@ def make_blank_from_schema(schema: dict) -> Any:
         return []
     else:
         return None
+
+# ------------------ Document Extraction Endpoint ------------------
+
+@app.post("/extract-document")
+async def extract_document(file: UploadFile = File(...)):
+    """
+    Endpoint para extraer información de documentos médicos (imágenes o PDFs).
+
+    Usa OpenAI Vision API (GPT-4o) para:
+    1. Leer el documento (imagen o PDF convertido a imagen)
+    2. Extraer información estructurada según nuestro schema
+    3. Retornar JSON compatible con el formulario
+
+    Args:
+        file: Archivo subido (imagen: jpg, png, etc. o PDF)
+
+    Returns:
+        JSONResponse con la estructura de datos extraída
+    """
+    try:
+        logger.info(f"[EXTRACT-DOC] Received file: {file.filename}, content_type: {file.content_type}")
+
+        # Leer el contenido del archivo
+        contents = await file.read()
+
+        # Determinar si es imagen o PDF
+        is_pdf = file.content_type == "application/pdf" or file.filename.lower().endswith('.pdf')
+
+        if is_pdf:
+            # Para PDFs: convertir primera página a imagen
+            try:
+                from pdf2image import convert_from_bytes
+                images = convert_from_bytes(contents, first_page=1, last_page=1)
+                if not images:
+                    return JSONResponse(
+                        status_code=400,
+                        content={"error": "No se pudo convertir el PDF a imagen"}
+                    )
+
+                # Convertir PIL Image a bytes
+                img_byte_arr = io.BytesIO()
+                images[0].save(img_byte_arr, format='PNG')
+                img_byte_arr.seek(0)
+                image_data = img_byte_arr.getvalue()
+
+            except ImportError:
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": "pdf2image no está instalado. Instala con: pip install pdf2image"}
+                )
+        else:
+            # Ya es una imagen
+            image_data = contents
+
+        # Convertir a base64 para enviar a OpenAI
+        base64_image = base64.b64encode(image_data).decode('utf-8')
+
+        # Crear el prompt para Vision API
+        system_prompt = """Eres un experto en digitalización de historias clínicas médicas.
+
+Tu tarea es extraer TODA la información visible en el documento médico y estructurarla en formato JSON.
+
+IMPORTANTE:
+- Extrae TODOS los datos que veas, incluso si están incompletos
+- Si un campo no está presente, omítelo del JSON (no pongas null ni cadenas vacías)
+- Mantén la terminología médica original
+- Para fechas, usa formato ISO (YYYY-MM-DD) si es posible
+- Para arrays (síntomas, diagnósticos, tratamientos), incluye todos los items que encuentres
+
+ESTRUCTURA ESPERADA:
+{
+  "afiliacion": {
+    "nombreCompleto": "nombre del paciente",
+    "edad": {"anios": número, "meses": número},
+    "sexo": "M/F",
+    "dni": "documento",
+    "grupoSangre": "tipo sangre",
+    "fechaHora": "fecha consulta",
+    "seguro": "nombre seguro",
+    "tipoConsulta": "tipo",
+    "numeroSeguro": "número",
+    "motivoConsulta": "motivo"
+  },
+  "anamnesis": {
+    "tiempoEnfermedad": "duración",
+    "sintomasPrincipales": ["síntoma1", "síntoma2"],
+    "relato": "narrativa completa",
+    "funcionesBiologicas": {
+      "apetito": "estado",
+      "sed": "estado",
+      "orina": "estado",
+      "deposiciones": "estado",
+      "sueno": "estado"
+    },
+    "antecedentes": {
+      "personales": ["antecedente1"],
+      "padre": ["antecedente paterno"],
+      "madre": ["antecedente materno"]
+    },
+    "alergias": ["alergia1"],
+    "medicamentos": ["medicamento1"]
+  },
+  "examenClinico": {
+    "signosVitales": {
+      "PA": "presión arterial",
+      "FC": frecuencia cardiaca (número),
+      "FR": frecuencia respiratoria (número),
+      "temperatura": "temperatura",
+      "SpO2": "saturación",
+      "IMC": "índice masa corporal",
+      "peso": peso en kg,
+      "talla": talla en cm
+    },
+    "estadoGeneral": "descripción",
+    "descripcionGeneral": "hallazgos",
+    "sistemas": {
+      "piel": "hallazgos",
+      "cabeza": "hallazgos",
+      "cuello": "hallazgos",
+      "torax": "hallazgos",
+      "pulmones": "hallazgos",
+      "corazon": "hallazgos",
+      "abdomen": "hallazgos",
+      "extremidades": "hallazgos",
+      "neurologico": "hallazgos"
+    }
+  },
+  "diagnosticos": [
+    {"nombre": "diagnóstico", "cie10": "código", "tipo": "Presuntivo/Definitivo/Diferencial"}
+  ],
+  "tratamientos": [
+    {"medicamento": "nombre", "dosisIndicacion": "dosis e indicaciones", "gtin": "código"}
+  ],
+  "firma": {
+    "medico": "nombre médico",
+    "colegiatura": "número colegiatura",
+    "fecha": "fecha"
+  }
+}
+
+Devuelve SOLO el JSON, sin explicaciones adicionales."""
+
+        user_prompt = "Extrae toda la información de esta historia clínica y estructúrala según el formato solicitado."
+
+        # Llamar a OpenAI Vision API
+        logger.info("[EXTRACT-DOC] Calling OpenAI Vision API...")
+
+        response = client.chat.completions.create(
+            model="gpt-4o",  # gpt-4o tiene vision capabilities
+            messages=[
+                {
+                    "role": "system",
+                    "content": system_prompt
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": user_prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{base64_image}",
+                                "detail": "high"  # high detail para mejor extracción
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens=4000,
+            temperature=0.1  # Baja temperatura para precisión
+        )
+
+        # Extraer el contenido de la respuesta
+        content = response.choices[0].message.content
+        logger.info(f"[EXTRACT-DOC] OpenAI response received: {len(content)} chars")
+
+        # Parsear el JSON
+        try:
+            # Limpiar markdown si viene envuelto en ```json ... ```
+            if content.strip().startswith("```"):
+                # Extraer solo el JSON
+                lines = content.strip().split('\n')
+                json_lines = []
+                in_json = False
+                for line in lines:
+                    if line.strip().startswith("```"):
+                        in_json = not in_json
+                        continue
+                    if in_json:
+                        json_lines.append(line)
+                content = '\n'.join(json_lines)
+
+            extracted_data = json.loads(content)
+            logger.info("[EXTRACT-DOC] Successfully parsed JSON")
+
+            return JSONResponse(content={
+                "success": True,
+                "data": extracted_data,
+                "message": "Documento procesado exitosamente"
+            })
+
+        except json.JSONDecodeError as e:
+            logger.error(f"[EXTRACT-DOC] JSON parse error: {e}")
+            logger.error(f"[EXTRACT-DOC] Raw content: {content}")
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "success": False,
+                    "error": "Error al parsear la respuesta de la IA",
+                    "raw_content": content
+                }
+            )
+
+    except Exception as e:
+        logger.exception("[EXTRACT-DOC] Unexpected error")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": str(e)
+            }
+        )
 
 # ------------------ Main ------------------
 

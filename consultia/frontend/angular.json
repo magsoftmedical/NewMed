@@ -91,7 +91,8 @@
               "buildTarget": "consult-ia:build:production"
             },
             "development": {
-              "buildTarget": "consult-ia:build:development"
+              "buildTarget": "consult-ia:build:development",
+              "proxyConfig": "proxy.conf.json"
             },
             "test": {
               "buildTarget": "consult-ia:build:test"
