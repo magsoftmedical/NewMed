@@ -1,87 +1,268 @@
-./
-  .DS_Store
-  .gitignore
-  Procfile
-  dump_tree.py
-  estructura.txt
-  estructura_carpetas.txt
-  requirements.txt
-  consultia/
-    .DS_Store
-    __init__.py
-    frontend/
-      .editorconfig
-      .gitignore
-      README.md
-      angular.json
-      package-lock.json
-      package.json
-      proxy.conf.json
-      tsconfig.app.json
-      tsconfig.json
-      tsconfig.spec.json
-      public/
-        favicon.ico
-      src/
-        .DS_Store
-        index.html
-        main.server.ts
-        main.ts
-        server.ts
-        styles.scss
-        app/
-          .DS_Store
-          app.component.html
-          app.component.scss
-          app.component.spec.ts
-          app.component.ts
-          app.config.server.ts
-          app.config.ts
-          app.routes.server.ts
-          app.routes.ts
-          core/
-            ai-stream.service.ts
-            ai-stream.state.ts
-            audio-recorder.service.spec.ts
-            audio-recorder.service.ts
-            field-utils.ts
-            recorder-gcp.service.ts
-            stt-gcp.service.ts
-            stt-service.ts
-            stt-stream.service.spec.ts
-            stt-stream.service.ts
-            tima.service.spec.ts
-            tima.service.ts
-            transcript-form.service.ts
-            types.ts
-            web-speech.service.ts
-          features/
-            .DS_Store
-            consultation-room/
-              ai-stream-panel.component.html
-              ai-stream-panel.component.scss
-              ai-stream-panel.component.ts
-              consultation-room.component.html
-              consultation-room.component.scss
-              consultation-room.component.spec.ts
-              consultation-room.component.ts
-        environments/
-          environment.ts
-        typings/
-          web-speech.d.ts
-        assets/
-          .DS_Store
-          worklets/
-            recorder-processor.js
-          js/
-            pcm-processor.js
-    backend/
-      .DS_Store
-      .env
-      __init__.py
-      constants.py
-      server.py
-    .vscode/
-      extensions.json
-      launch.json
-      tasks.json
+Estructura del proyecto en: consultia
+
+|-- .DS_Store
+|-- .gitignore
+|-- [.vscode]
+    |-- extensions.json
+    |-- launch.json
+    |-- tasks.json
+|-- __init__.py
+|-- [backend]
+    |-- .DS_Store
+    |-- Procfile
+    |-- __init__.py
+    |-- [__pycache__]
+        |-- __init__.cpython-311.pyc
+        |-- constants.cpython-311.pyc
+        |-- server.cpython-311.pyc
+    |-- constants.py
+    |-- requirements.txt
+    |-- server.py
+|-- [frontend]
+    |-- [.angular]
+        |-- [cache]
+            |-- [19.2.15]
+                |-- [angular-webpack]
+                    |-- [5e4cf67f7d14aaf130de5a01250fccc3c092f767]
+                        |-- 0.pack
+                        |-- index.pack
+                |-- [babel-webpack]
+                
+                    |-- fe2e772cbeb1b44860d0ad1e83ed6db78d06365b6910ee37a088d46e16e790bd.json
+                |-- [consult-ia]
+                    |-- .tsbuildinfo
+                    |-- angular-compiler.db
+                    |-- angular-compiler.db-lock
+                    |-- [vite]
+                        |-- [deps]
+                            |-- @angular_common.js
+                            |-- @angular_common.js.map
+                            |-- @angular_core.js
+                            |-- @angular_core.js.map
+                            |-- @angular_forms.js
+                            |-- @angular_forms.js.map
+                            |-- @angular_platform-browser.js
+                            |-- @angular_platform-browser.js.map
+                            |-- @angular_router.js
+                            |-- @angular_router.js.map
+                            |-- _metadata.json
+                            |-- chunk-4S3KYZTJ.js
+                            |-- chunk-4S3KYZTJ.js.map
+                            |-- chunk-5EDOULXC.js
+                            |-- chunk-5EDOULXC.js.map
+                            |-- chunk-O3Y4EQOG.js
+                            |-- chunk-O3Y4EQOG.js.map
+                            |-- chunk-OEOH75ZL.js
+                            |-- chunk-OEOH75ZL.js.map
+                            |-- chunk-PEBH6BBU.js
+                            |-- chunk-PEBH6BBU.js.map
+                            |-- chunk-TXDUYLVM.js
+                            |-- chunk-TXDUYLVM.js.map
+                            |-- chunk-WPM5VTLQ.js
+                            |-- chunk-WPM5VTLQ.js.map
+                            |-- chunk-WUUVWCMF.js
+                            |-- chunk-WUUVWCMF.js.map
+                            |-- html2canvas.esm-ZNF64ISW.js
+                            |-- html2canvas.esm-ZNF64ISW.js.map
+                            |-- index.es-7FH32NJO.js
+                            |-- index.es-7FH32NJO.js.map
+                            |-- jspdf-autotable.js
+                            |-- jspdf-autotable.js.map
+                            |-- jspdf.js
+                            |-- jspdf.js.map
+                            |-- lucide-angular.js
+                            |-- lucide-angular.js.map
+                            |-- package.json
+                            |-- purify.es-64WHFMY6.js
+                            |-- purify.es-64WHFMY6.js.map
+                            |-- rxjs.js
+                            |-- rxjs.js.map
+                            |-- rxjs_operators.js
+                            |-- rxjs_operators.js.map
+                        |-- [deps_ssr]
+                            |-- @angular_common.js
+                            |-- @angular_common.js.map
+                            |-- @angular_common_http.js
+                            |-- @angular_common_http.js.map
+                            |-- @angular_core.js
+                            |-- @angular_core.js.map
+                            |-- @angular_forms.js
+                            |-- @angular_forms.js.map
+                            |-- @angular_platform-browser.js
+                            |-- @angular_platform-browser.js.map
+                            |-- @angular_platform-server.js
+                            |-- @angular_platform-server.js.map
+                            |-- @angular_router.js
+                            |-- @angular_router.js.map
+                            |-- @angular_ssr.js
+                            |-- @angular_ssr.js.map
+                            |-- @angular_ssr_node.js
+                            |-- @angular_ssr_node.js.map
+                            |-- _metadata.json
+                            |-- chunk-254V6DNP.js
+                            |-- chunk-254V6DNP.js.map
+                            |-- chunk-62SVJMVC.js
+                            |-- chunk-62SVJMVC.js.map
+                            |-- chunk-7GGRH7YR.js
+                            |-- chunk-7GGRH7YR.js.map
+                            |-- chunk-7VVESGAN.js
+                            |-- chunk-7VVESGAN.js.map
+                            |-- chunk-I7EYP7Q7.js
+                            |-- chunk-I7EYP7Q7.js.map
+                            |-- chunk-LCXSURUN.js
+                            |-- chunk-LCXSURUN.js.map
+                            |-- chunk-LEZCLC5X.js
+                            |-- chunk-LEZCLC5X.js.map
+                            |-- chunk-OJ7RCSKH.js
+                            |-- chunk-OJ7RCSKH.js.map
+                            |-- chunk-OYTRG5F6.js
+                            |-- chunk-OYTRG5F6.js.map
+                            |-- chunk-SVWSKDNZ.js
+                            |-- chunk-SVWSKDNZ.js.map
+                            |-- chunk-XCIYP5SE.js
+                            |-- chunk-XCIYP5SE.js.map
+                            |-- chunk-YHCV7DAQ.js
+                            |-- chunk-YHCV7DAQ.js.map
+                            |-- chunk-ZUJ64LXG.js
+                            |-- chunk-ZUJ64LXG.js.map
+                            |-- express.js
+                            |-- express.js.map
+                            |-- html2canvas.esm-KZ3MZAWF.js
+                            |-- html2canvas.esm-KZ3MZAWF.js.map
+                            |-- index.es-APRX7X75.js
+                            |-- index.es-APRX7X75.js.map
+                            |-- jspdf-autotable.js
+                            |-- jspdf-autotable.js.map
+                            |-- jspdf.js
+                            |-- jspdf.js.map
+                            |-- lucide-angular.js
+                            |-- lucide-angular.js.map
+                            |-- package.json
+                            |-- purify.es-UJQB2BHD.js
+                            |-- purify.es-UJQB2BHD.js.map
+                            |-- rxjs.js
+                            |-- rxjs.js.map
+                            |-- rxjs_operators.js
+                            |-- rxjs_operators.js.map
+                            |-- xhr2-TXIMV6CV.js
+                            |-- xhr2-TXIMV6CV.js.map
+    |-- .editorconfig
+    |-- .gitattributes
+    |-- .gitignore
+    |-- README.md
+    |-- angular.json
+    |-- [dist]
+        |-- [consult-ia]
+            |-- 3rdpartylicenses.txt
+            |-- [browser]
+                |-- [assets]
+                    |-- [js]
+                        |-- pcm-processor.js
+                    |-- [worklets]
+                        |-- recorder-processor.js
+                |-- chunk-DWXXUATF.js
+                |-- chunk-FDERIQAA.js
+                |-- chunk-HAK7VB6F.js
+                |-- chunk-OUN3ONLG.js
+                |-- chunk-TUV45ESR.js
+                |-- favicon.ico
+                |-- index.csr.html
+                |-- index.html
+                |-- main-OA34M2JL.js
+                |-- polyfills-B6TNHZQ6.js
+                |-- styles-BO2UJIER.css
+            |-- prerendered-routes.json
+            |-- [server]
+                |-- angular-app-engine-manifest.mjs
+                |-- angular-app-manifest.mjs
+                |-- [assets-chunks]
+                    |-- index_csr_html.mjs
+                    |-- index_html.mjs
+                    |-- index_server_html.mjs
+                    |-- styles-BO2UJIER_css.mjs
+                |-- chunk-36ZWINNU.mjs
+                |-- chunk-7LJ2JR3P.mjs
+                |-- chunk-BPMBGF37.mjs
+                |-- chunk-EJSJJTUO.mjs
+                |-- chunk-FE3ZEMPP.mjs
+                |-- chunk-GFUZYSQG.mjs
+                |-- chunk-LDY34X2R.mjs
+                |-- chunk-S6KH3LOX.mjs
+                |-- index.server.html
+                |-- main.server.mjs
+                |-- polyfills.server.mjs
+                |-- server.mjs
+    
+    |-- proxy.conf.json
+    |-- [public]
+        |-- favicon.ico
+    |-- [src]
+        |-- [app]
+            |-- app.component.html
+            |-- app.component.scss
+            |-- app.component.spec.ts
+            |-- app.component.ts
+            |-- app.config.server.ts
+            |-- app.config.ts
+            |-- app.routes.server.ts
+            |-- app.routes.ts
+            |-- [core]
+                |-- ai-stream.service.ts
+                |-- ai-stream.state.ts
+                |-- audio-recorder.service.spec.ts
+                |-- audio-recorder.service.ts
+                |-- field-utils.ts
+                |-- recorder-gcp.service.ts
+                |-- stt-gcp.service.ts
+                |-- stt-service.ts
+                |-- stt-stream.service.spec.ts
+                |-- stt-stream.service.ts
+                |-- tima.service.spec.ts
+                |-- tima.service.ts
+                |-- transcript-form.service.ts
+                |-- types.ts
+                |-- web-speech.service.ts
+            |-- [features]
+                |-- [consultation-room]
+                    |-- ai-stream-panel.component.html
+                    |-- ai-stream-panel.component.scss
+                    |-- ai-stream-panel.component.ts
+                    |-- consultation-room.component.html
+                    |-- consultation-room.component.html.bak
+                    |-- consultation-room.component.scss
+                    |-- consultation-room.component.spec.ts
+                    |-- consultation-room.component.ts
+            |-- icons.module.ts
+        |-- [assets]
+            |-- [js]
+                |-- pcm-processor.js
+            |-- logo.png
+            |-- [worklets]
+                |-- recorder-processor.js
+        |-- [environments]
+            |-- environment.test.ts
+            |-- environment.ts
+        |-- index.html
+        |-- main.server.ts
+        |-- main.ts
+        |-- server.ts
+        |-- styles.scss
+        |-- [typings]
+            |-- web-speech.d.ts
+    |-- tailwind.config.js
+    |-- tsconfig.app.json
+    |-- tsconfig.json
+    |-- tsconfig.spec.json
+|-- [node_modules]
+    |-- [@esbuild]
+        |-- [win32-x64]
+            |-- esbuild.exe
+    |-- [@lmdb]
+        |-- [lmdb-win32-x64]
+            |-- node.napi.node
+    |-- [@msgpackr-extract]
+        |-- [msgpackr-extract-win32-x64]
+            |-- node.napi.node
+    |-- [@rollup]
+        |-- [rollup-win32-x64-msvc]
+            |-- rollup.win32-x64-msvc.node

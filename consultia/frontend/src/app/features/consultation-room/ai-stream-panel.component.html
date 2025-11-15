@@ -1,52 +1,119 @@
 <div class="panel">
+  <!-- Header fijo con estadísticas -->
   <header class="sticky">
     <div class="title">Asistente IA (streaming)</div>
 
+    <!-- Contador de secciones completadas -->
+    <div class="section-progress" *ngIf="hasActivity(); else noDataYet">
+      <div class="stat-item">
+        <span class="stat-icon">📊</span>
+        <span class="stat-label">Secciones:</span>
+        <span class="stat-value">{{ completedSections() }} / {{ totalSections() || 5 }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-icon">✓</span>
+        <span class="stat-label">Campos:</span>
+        <span class="stat-value">{{ completed() }} / {{ total() || '...' }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-icon">📈</span>
+        <span class="stat-label">Progreso:</span>
+        <span class="stat-value">{{ progress() }}%</span>
+      </div>
+    </div>
+    <ng-template #noDataYet>
+      <div class="no-data-message">
+        <span class="stat-icon">🎤</span>
+        <span>Comienza a hablar para llenar la historia clínica...</span>
+      </div>
+    </ng-template>
+
     <!-- Barra de progreso global -->
     <div class="progress">
-      <!-- Usa la variable CSS --p; Angular le pasa el % -->
       <div class="bar" [style.--p]="progress()"></div>
-    </div>
-
-    <div style="margin-top:4px;font-size:.85rem;opacity:.8">
-      <span *ngIf="total() > 0; else emptyState">
-        {{ completed() }} / {{ total() }} campos completos
-      </span>
-      <ng-template #emptyState>Configura campos requeridos</ng-template>
     </div>
   </header>
 
-  <!-- Secciones provenientes de AiStreamState -->
-  <section *ngFor="let s of sections">
-    <h3 class="section"
-        (click)="toggle(s)"
-        role="button"
-        [attr.aria-expanded]="open === s"
-        [attr.aria-controls]="'sec-' + s">
-      {{ s }}
-      <span class="count">{{ completedIn(s) }}</span>
-    </h3>
+  <!-- Contenido con scroll -->
+  <div class="scrollable-content">
+    <!-- AI Assistant Text Section - Siempre visible y fija -->
+    <section class="ai-summary fixed-card">
+      <h3 class="section-header">🤖 Resumen de IA</h3>
+      <div class="ai-text" *ngIf="(aiText$ | async) as aiText; else loadingAI">
+        {{ aiText }}
+      </div>
+      <ng-template #loadingAI>
+        <div class="loading-state">
+          <span class="spinner">⏳</span>
+          <span>Esperando transcripción...</span>
+        </div>
+      </ng-template>
+    </section>
 
-    <ul class="list"
-        [id]="'sec-' + s"
-        [class.collapsed]="open !== s">
-      <li *ngFor="let f of bySection(s); trackBy: trackByPath"
-          [class.updated]="f.status==='updated'">
-        <span class="dot"
-              [class.empty]="f.status==='empty'"
-              [class.new]="f.status==='new'"
-              [class.upd]="f.status==='updated'"></span>
+    <!-- Última Sugerencia - Tipo chat -->
+    <section class="latest-suggestion fixed-card" *ngIf="(suggestions$ | async) as suggestions">
+      <h3 class="section-header">💡 Última Sugerencia</h3>
+      <div class="chat-message" *ngIf="suggestions.length > 0; else noSuggestions">
+        <div class="message-bubble">
+          {{ suggestions[suggestions.length - 1] }}
+        </div>
+        <div class="message-count" *ngIf="suggestions.length > 1">
+          +{{ suggestions.length - 1 }} sugerencias anteriores
+        </div>
+      </div>
+      <ng-template #noSuggestions>
+        <div class="empty-state">Sin sugerencias</div>
+      </ng-template>
+    </section>
 
-        <span class="label">{{ f.label }}</span>
-        <span class="value" [class.placeholder]="!f.value">{{ f.value || '—' }}</span>
+    <!-- Secciones del formulario con indicador de completado -->
+    <div class="form-sections">
+      <section *ngFor="let s of sections" class="form-section">
+        <h3 class="section-header clickable"
+            (click)="toggle(s)"
+            role="button"
+            [attr.aria-expanded]="open === s"
+            [attr.aria-controls]="'sec-' + s">
+          <span class="section-title">
+            <span class="completion-icon" [class.completed]="isSectionComplete(s)">
+              {{ isSectionComplete(s) ? '✅' : '⚪' }}
+            </span>
+            {{ s }}
+          </span>
+          <span class="section-stats">
+            <span class="count">{{ completedIn(s) }}/{{ totalIn(s) }}</span>
+            <span class="expand-icon">{{ open === s ? '▼' : '▶' }}</span>
+          </span>
+        </h3>
 
-        <button class="mini" (click)="clearField(f)" title="Limpiar">🗑️</button>
-      </li>
-    </ul>
-  </section>
+        <ul class="list"
+            [id]="'sec-' + s"
+            [class.collapsed]="open !== s">
+          <li *ngFor="let f of bySection(s); trackBy: trackByPath"
+              [class.updated]="f.status==='updated'"
+              [class.completed]="f.value && f.value !== ''">
+            <span class="dot"
+                  [class.empty]="f.status==='empty'"
+                  [class.new]="f.status==='new'"
+                  [class.upd]="f.status==='updated'"
+                  [class.filled]="f.value && f.value !== ''"></span>
 
-  <!-- Acción -->
-  <div style="display:flex;justify-content:flex-end;margin-top:8px">
-    <button class="btn btn-ghost" (click)="clearAll()">Limpiar todo</button>
+            <span class="label">{{ f.label }}</span>
+            <span class="value" [class.placeholder]="!f.value">
+              {{ f.value || '—' }}
+            </span>
+
+            <button class="mini" (click)="clearField(f)" title="Limpiar" *ngIf="f.value">🗑️</button>
+          </li>
+        </ul>
+      </section>
+    </div>
   </div>
+
+  <!-- Footer fijo con acción -->
+  <footer class="sticky-footer">
+    <button class="btn btn-ghost" (click)="clearAll()" *ngIf="total() > 0">
+      🗑️ Limpiar todo
+    </button>
+  </footer>
 </div>
