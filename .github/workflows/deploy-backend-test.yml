@@ -1,4 +1,4 @@
-name: Deploy Backend (Test)
+name: Build and Deploy to Test
 
 on:
   push:
