@@ -48,7 +48,7 @@ jobs:
       - name: Deploy to Container App
         uses: azure/container-apps-deploy-action@v1
         with:
-          containerAppName: medberos-tima-backend-test
+          containerAppName: medberos-tima-api-test
           resourceGroup: medberos-tima
           imageToDeploy: ghcr.io/magsoftmedical/medberos-tima-backend:${{ github.sha }}
           registryUrl: ghcr.io
