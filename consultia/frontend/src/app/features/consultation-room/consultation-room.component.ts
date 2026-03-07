@@ -5,6 +5,7 @@ import { Subscription } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 
 import { WebSpeechService, WSPartial } from '../../core/web-speech.service';
+import { WhisperRecorderService } from '../../core/whisper-recorder.service';
 import { AiStreamService, HistoriaClinica } from '../../core/ai-stream.service';
 import { AiStreamPanelComponent } from './ai-stream-panel.component'; // <-- IMPORTA EL PANEL
 import { AiPredictionsComponent } from '../../components/ai-predictions/ai-predictions.component';
@@ -31,6 +32,11 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
   listening = false;
   level = 0;
   sessionId = '';
+
+  // STT mode toggle
+  sttMode: 'browser' | 'whisper' = 'browser';
+  whisperRecording = false;
+  whisperTranscribing = false;
 
   // IA
   assistantLive = '';            // <- usado en el HTML
@@ -66,6 +72,7 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
 
   constructor(
     private wspeech: WebSpeechService,
+    private whisperRecorder: WhisperRecorderService,
     public  ai: AiStreamService,
     private fb: FormBuilder,
     private medberosService: MedberosService,
@@ -176,6 +183,21 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
       this.wspeech.listening$.subscribe(v => (this.listening = v)),
       this.wspeech.level$.subscribe(v => (this.level = v)),
       this.wspeech.error$.subscribe(err => console.warn('[WebSpeech] error:', err))
+    );
+
+    // 3b) Suscripciones Whisper
+    this.subs.push(
+      this.whisperRecorder.recording$.subscribe(v => (this.whisperRecording = v)),
+      this.whisperRecorder.transcribing$.subscribe(v => (this.whisperTranscribing = v)),
+      this.whisperRecorder.result$.subscribe(msg => {
+        this.finalText += (msg.text || '').trim() + '. ';
+        this.partialText = '';
+        if (this.isBrowser) this.ai.sendFinal(msg.text || '');
+      }),
+      this.whisperRecorder.level$.subscribe(v => {
+        if (this.sttMode === 'whisper') this.level = v;
+      }),
+      this.whisperRecorder.error$.subscribe(err => console.warn('[Whisper] error:', err))
     );
 
     // 4) Suscripciones IA (solo navegador)
@@ -323,14 +345,40 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
   }
 
   // ---------- Controles UI ----------
+  toggleSttMode(mode: 'browser' | 'whisper'): void {
+    if (mode === this.sttMode) return;
+    // Stop current mode before switching
+    if (this.sttMode === 'browser') {
+      this.wspeech.stop();
+    } else {
+      this.whisperRecorder.cancel();
+    }
+    this.sttMode = mode;
+  }
+
   startMic(): void {
+    if (this.sttMode === 'whisper') {
+      this.whisperRecorder.start();
+      return;
+    }
     if (!this.wspeech.supported) {
       alert('Este navegador no soporta Web Speech API. Prueba Chrome/Edge.');
       return;
     }
     this.wspeech.start('es-PE', true, true, true);
   }
-  stopMic(): void { this.wspeech.stop(); }
+
+  stopMic(): void {
+    if (this.sttMode === 'whisper') {
+      this.whisperRecorder.cancel();
+      return;
+    }
+    this.wspeech.stop();
+  }
+
+  stopAndTranscribeWhisper(): void {
+    this.whisperRecorder.stopAndTranscribe();
+  }
 
   clearText(): void {
     this.partialText = '';
@@ -376,7 +424,8 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subs.forEach(s => s.unsubscribe());
-    this.stopMic();
+    this.wspeech.stop();
+    this.whisperRecorder.cancel();
     if (this.isBrowser) this.ai.close();
   }
 

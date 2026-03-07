@@ -15,21 +15,86 @@
 
     <!-- Toolbar -->
     <div class="flex items-center flex-wrap gap-1">
-      <!-- Píldora de estado -->
-      <span class="listening-pill" [class.is-on]="listening" aria-live="polite">
-        <span class="dot"></span>
-        {{ listening ? 'Escuchando…' : 'Detenido' }}
+
+      <!-- STT mode toggle -->
+      <span class="inline-flex rounded-md shadow-sm mr-1" role="group">
+        <button type="button"
+          class="btn text-xs px-2 py-1 rounded-r-none"
+          [class.btn-primary]="sttMode === 'browser'"
+          [class.btn-ghost]="sttMode !== 'browser'"
+          (click)="toggleSttMode('browser')">
+          Navegador
+        </button>
+        <button type="button"
+          class="btn text-xs px-2 py-1 rounded-l-none"
+          [class.btn-primary]="sttMode === 'whisper'"
+          [class.btn-ghost]="sttMode !== 'whisper'"
+          (click)="toggleSttMode('whisper')">
+          Whisper
+        </button>
       </span>
 
-        <button class="btn btn-primary flex items-center gap-1" (click)="startMic()">
-          <lucide-icon name="mic" class="w-4 h-4"></lucide-icon>
-          Iniciar
-        </button>
+      <!-- Píldora de estado -->
+      <span class="listening-pill"
+        [class.is-on]="listening || whisperRecording"
+        aria-live="polite">
+        <span class="dot"></span>
+        <ng-container *ngIf="sttMode === 'browser'">
+          {{ listening ? 'Escuchando…' : 'Detenido' }}
+        </ng-container>
+        <ng-container *ngIf="sttMode === 'whisper'">
+          {{ whisperTranscribing ? 'Transcribiendo…' : (whisperRecording ? 'Grabando…' : 'Detenido') }}
+        </ng-container>
+      </span>
 
-        <button class="btn btn-ghost flex items-center gap-1" (click)="stopMic()">
-          <lucide-icon name="pause" class="w-4 h-4"></lucide-icon>
-          Pausar
-        </button>
+        <!-- Browser mode buttons -->
+        <ng-container *ngIf="sttMode === 'browser'">
+          <button class="btn btn-primary flex items-center gap-1" (click)="startMic()">
+            <lucide-icon name="mic" class="w-4 h-4"></lucide-icon>
+            Iniciar
+          </button>
+
+          <button class="btn btn-ghost flex items-center gap-1" (click)="stopMic()">
+            <lucide-icon name="pause" class="w-4 h-4"></lucide-icon>
+            Pausar
+          </button>
+        </ng-container>
+
+        <!-- Whisper mode buttons -->
+        <ng-container *ngIf="sttMode === 'whisper'">
+          <button *ngIf="!whisperRecording && !whisperTranscribing"
+            class="btn btn-primary flex items-center gap-1"
+            (click)="startMic()">
+            <lucide-icon name="mic" class="w-4 h-4"></lucide-icon>
+            Iniciar dictado
+          </button>
+
+          <button *ngIf="whisperRecording && !whisperTranscribing"
+            class="btn btn-primary flex items-center gap-1 animate-pulse"
+            style="background:#dc2626; border-color:#dc2626;"
+            (click)="stopAndTranscribeWhisper()">
+            <lucide-icon name="square" class="w-4 h-4"></lucide-icon>
+            Detener y transcribir
+          </button>
+
+          <button *ngIf="whisperRecording && !whisperTranscribing"
+            class="btn btn-ghost flex items-center gap-1"
+            (click)="stopMic()">
+            <lucide-icon name="x" class="w-4 h-4"></lucide-icon>
+            Cancelar
+          </button>
+
+          <button *ngIf="whisperTranscribing"
+            class="btn btn-ghost flex items-center gap-1"
+            disabled>
+            <span class="flex gap-0.5">
+              <span class="w-1 h-1 bg-current rounded-full animate-bounce"></span>
+              <span class="w-1 h-1 bg-current rounded-full animate-bounce" style="animation-delay: 100ms"></span>
+              <span class="w-1 h-1 bg-current rounded-full animate-bounce" style="animation-delay: 200ms"></span>
+            </span>
+            Transcribiendo...
+          </button>
+        </ng-container>
 
         <button class="btn btn-ghost flex items-center gap-1" (click)="clearText()">
           <lucide-icon name="trash-2" class="w-4 h-4"></lucide-icon>
