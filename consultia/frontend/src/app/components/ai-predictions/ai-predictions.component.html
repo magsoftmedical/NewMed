@@ -1,0 +1,126 @@
+<div class="ai-predictions-panel" *ngIf="hasPredictions">
+  <div class="panel-header">
+    <h3>Predicciones de IA</h3>
+    <span class="badge">Medberos AI</span>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button
+      class="tab"
+      [class.active]="activeTab === 'diagnoses'"
+      (click)="setActiveTab('diagnoses')">
+      Diagnósticos
+      <span class="count" *ngIf="diagnosticos.length">{{ diagnosticos.length }}</span>
+    </button>
+    <button
+      class="tab"
+      [class.active]="activeTab === 'exams'"
+      (click)="setActiveTab('exams')">
+      Exámenes
+      <span class="count" *ngIf="examenes.length">{{ examenes.length }}</span>
+    </button>
+    <button
+      class="tab"
+      [class.active]="activeTab === 'treatments'"
+      (click)="setActiveTab('treatments')">
+      Tratamientos
+      <span class="count" *ngIf="tratamientos.length">{{ tratamientos.length }}</span>
+    </button>
+  </div>
+
+  <!-- Panel de Diagnósticos -->
+  <div class="predictions-content" *ngIf="activeTab === 'diagnoses'">
+    <div class="prediction-card" *ngFor="let item of diagnosticos">
+      <div class="prediction-info">
+        <div class="prediction-name">{{ item.nombre }}</div>
+        <div class="prediction-meta">
+          <span class="cie-code" *ngIf="item.codigo">{{ item.codigo }}</span>
+          <span class="prediction-type">{{ item.tipo }}</span>
+        </div>
+      </div>
+
+      <div class="prediction-confidence">
+        <div class="confidence-bar">
+          <div
+            class="confidence-fill"
+            [style.width.%]="(item.confianza || 0) * 100"
+            [style.background-color]="getConfidenceColor(item.confianza)">
+          </div>
+        </div>
+        <span class="confidence-text">{{ (item.confianza || 0) * 100 | number:'1.0-0' }}%</span>
+      </div>
+
+      <button class="btn-accept" (click)="onAcceptDiagnosis(item)">
+        Aceptar
+      </button>
+    </div>
+
+    <div class="empty-state" *ngIf="!diagnosticos.length">
+      <p>No hay predicciones de diagnósticos disponibles</p>
+    </div>
+  </div>
+
+  <!-- Panel de Exámenes -->
+  <div class="predictions-content" *ngIf="activeTab === 'exams'">
+    <div class="prediction-card" *ngFor="let item of examenes">
+      <div class="prediction-info">
+        <div class="prediction-name">{{ item.nombre }}</div>
+      </div>
+
+      <div class="prediction-confidence" *ngIf="item.confianza">
+        <div class="confidence-bar">
+          <div
+            class="confidence-fill"
+            [style.width.%]="(item.confianza || 0) * 100"
+            [style.background-color]="getConfidenceColor(item.confianza)">
+          </div>
+        </div>
+        <span class="confidence-text">{{ (item.confianza || 0) * 100 | number:'1.0-0' }}%</span>
+      </div>
+
+      <button class="btn-accept" (click)="onAcceptExam(item)">
+        Aceptar
+      </button>
+    </div>
+
+    <div class="empty-state" *ngIf="!examenes.length">
+      <p>No hay predicciones de exámenes disponibles</p>
+    </div>
+  </div>
+
+  <!-- Panel de Tratamientos -->
+  <div class="predictions-content" *ngIf="activeTab === 'treatments'">
+    <div class="prediction-card" *ngFor="let item of tratamientos">
+      <div class="prediction-info">
+        <div class="prediction-name">{{ item.nombre }}</div>
+        <div class="prediction-detail" *ngIf="item.detalle">{{ item.detalle }}</div>
+      </div>
+
+      <div class="prediction-confidence" *ngIf="item.confianza">
+        <div class="confidence-bar">
+          <div
+            class="confidence-fill"
+            [style.width.%]="(item.confianza || 0) * 100"
+            [style.background-color]="getConfidenceColor(item.confianza)">
+          </div>
+        </div>
+        <span class="confidence-text">{{ (item.confianza || 0) * 100 | number:'1.0-0' }}%</span>
+      </div>
+
+      <button class="btn-accept" (click)="onAcceptTreatment(item)">
+        Aceptar
+      </button>
+    </div>
+
+    <div class="empty-state" *ngIf="!tratamientos.length">
+      <p>No hay predicciones de tratamientos disponibles</p>
+    </div>
+  </div>
+</div>
+
+<!-- Mostrar cuando no hay predicciones -->
+<div class="no-predictions" *ngIf="!hasPredictions">
+  <p>Esperando predicciones de IA...</p>
+  <small>Las predicciones aparecerán aquí cuando dictes información suficiente</small>
+</div>

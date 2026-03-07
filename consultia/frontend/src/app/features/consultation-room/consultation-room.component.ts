@@ -1,12 +1,15 @@
-import { Component, OnDestroy, OnInit, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnDestroy, OnInit, Inject, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { FormArray, FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
-import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 
 import { WebSpeechService, WSPartial } from '../../core/web-speech.service';
 import { AiStreamService, HistoriaClinica } from '../../core/ai-stream.service';
 import { AiStreamPanelComponent } from './ai-stream-panel.component'; // <-- IMPORTA EL PANEL
+import { AiPredictionsComponent } from '../../components/ai-predictions/ai-predictions.component';
+import { MedberosService } from '../../services/medberos.service';
+import { AIPredictionsMessage } from '../../models/medberos.models';
 
 import jsPDF from 'jspdf';
 import autoTable, { RowInput } from 'jspdf-autotable';
@@ -17,7 +20,7 @@ import { environment } from '../../../environments/environment';
 @Component({
   selector: 'app-consultation-room',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, AiStreamPanelComponent, IconsModule, HttpClientModule],
+  imports: [CommonModule, ReactiveFormsModule, AiStreamPanelComponent, AiPredictionsComponent, IconsModule],
   templateUrl: './consultation-room.component.html',
   styleUrls: ['./consultation-room.component.scss'],
 })
@@ -33,6 +36,10 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
   assistantLive = '';            // <- usado en el HTML
   missing: string[] = [];
   suggestions: string[] = [];
+
+  // Medberos AI Predictions
+  aiPredictions: AIPredictionsMessage | null = null;
+  showPredictions = true;
 
   // Tabs del formulario
   activeTab: string = 'afiliacion';
@@ -55,12 +62,13 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
 
   private subs: Subscription[] = [];
   private isBrowser: boolean;
+  private http = inject(HttpClient); // Inyección funcional para upload de documentos
 
   constructor(
     private wspeech: WebSpeechService,
     public  ai: AiStreamService,
     private fb: FormBuilder,
-    private http: HttpClient,
+    private medberosService: MedberosService,
     @Inject(PLATFORM_ID) platformId: Object
   ) {
     this.isBrowser = isPlatformBrowser(platformId);
@@ -132,6 +140,15 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
     });
 
     this.ai.evaluate(this.hcForm.getRawValue());
+
+    // Suscripción a cambios del formulario para Medberos (con más delay)
+    this.subs.push(
+      this.hcForm.valueChanges
+        .pipe(debounceTime(2000)) // 2 segundos de delay para no hacer llamadas excesivas
+        .subscribe(formValue => {
+          this.requestMedberosPredictions(formValue);
+        })
+    );
 
     // 2) Conectar a IA (solo navegador)
     if (this.isBrowser) {
@@ -779,6 +796,142 @@ export class ConsultationRoomComponent implements OnInit, OnDestroy {
 
   clearExtractedData(): void {
     this.extractedDataPreview = '';
+  }
+
+  // ---------- Medberos AI Predictions ----------
+  togglePredictions(): void {
+    this.showPredictions = !this.showPredictions;
+  }
+
+  private requestMedberosPredictions(formValue: any): void {
+    // Debug: ver qué llega
+    console.log('[MEDBEROS DEBUG] Form value received:', {
+      motivoConsulta: formValue.afiliacion?.motivoConsulta,
+      sintomasPrincipales: formValue.anamnesis?.sintomasPrincipales
+    });
+
+    // Solo hacer predicciones si hay información mínima
+    const hasMinimalInfo = formValue.afiliacion?.motivoConsulta ||
+                           formValue.anamnesis?.sintomasPrincipales?.length > 0;
+
+    if (!hasMinimalInfo) {
+      console.log('[MEDBEROS DEBUG] No hay información mínima, skipping predictions');
+      return; // No hay suficiente info para predicciones
+    }
+
+    console.log('[CONSULTATION] Requesting Medberos predictions...');
+
+    // Llamar al endpoint unificado (solo una llamada)
+    const doctorComments = this.finalText || '';
+
+    this.medberosService.predictAll(formValue, doctorComments).subscribe({
+      next: (response) => {
+        console.log('[CONSULTATION] All predictions received:', response);
+
+        if (!response.success) {
+          console.error('[CONSULTATION] Prediction failed:', response.error);
+          return;
+        }
+
+        if (!this.aiPredictions) this.aiPredictions = {};
+
+        // Procesar diagnósticos
+        if (response.diagnosticos && response.diagnosticos.length > 0) {
+          console.log('[CONSULTATION] Processing diagnoses:', response.diagnosticos);
+          this.aiPredictions.diagnoses = {
+            predictions: response.diagnosticos.map((d: any) => ({
+              Name: d.nombre,
+              CieCode: d.cie10,
+              Type: d.tipo,
+              Confidence: d.confianza || 0.85
+            }))
+          };
+        }
+
+        // Procesar exámenes (por ahora vacío)
+        if (response.examenes && response.examenes.length > 0) {
+          this.aiPredictions.exams = {
+            predictions: response.examenes.map((e: any) => ({
+              Name: e,
+              Confidence: 0.8
+            }))
+          };
+        }
+
+        // Procesar tratamientos (por ahora vacío)
+        if (response.tratamientos && response.tratamientos.length > 0) {
+          this.aiPredictions.treatments = {
+            predictions: response.tratamientos.map((t: any) => ({
+              MedicineName: t.medicamento,
+              Dosage: t.dosisIndicacion,
+              GTIN: t.gtin,
+              Confidence: t.confianza || 0.8
+            }))
+          };
+        }
+      },
+      error: (err) => console.error('[CONSULTATION] Error getting predictions:', err)
+    });
+  }
+
+  onAcceptDiagnosisFromAI(diagnosis: any): void {
+    console.log('[CONSULTATION] Accepting AI diagnosis:', diagnosis);
+
+    // Agregar al FormArray de diagnósticos
+    this.addDiagnostico({
+      nombre: diagnosis.nombre,
+      tipo: diagnosis.tipo || 'Presuntivo',
+      cie10: diagnosis.cie10
+    });
+
+    // Cambiar a la tab de diagnósticos para ver el resultado
+    this.setActiveTab('diagnosticos');
+
+    // Feedback visual
+    this.deltaFeed.unshift({
+      icon: '🤖',
+      title: 'Diagnóstico aceptado',
+      desc: `Se agregó: ${diagnosis.nombre}`,
+      path: 'diagnosticos',
+      evidence: ''
+    });
+  }
+
+  onAcceptExamFromAI(examName: string): void {
+    console.log('[CONSULTATION] Accepting AI exam:', examName);
+
+    // TODO: Implementar lógica para agregar exámenes cuando exista el FormArray
+    // Por ahora solo mostramos feedback
+    this.deltaFeed.unshift({
+      icon: '🤖',
+      title: 'Examen aceptado',
+      desc: `Se sugirió: ${examName}`,
+      path: 'examenes',
+      evidence: ''
+    });
+  }
+
+  onAcceptTreatmentFromAI(treatment: any): void {
+    console.log('[CONSULTATION] Accepting AI treatment:', treatment);
+
+    // Agregar al FormArray de tratamientos
+    this.addTratamiento({
+      medicamento: treatment.medicamento,
+      dosisIndicacion: treatment.dosisIndicacion,
+      gtin: ''
+    });
+
+    // Cambiar a la tab de tratamientos para ver el resultado
+    this.setActiveTab('tratamientos');
+
+    // Feedback visual
+    this.deltaFeed.unshift({
+      icon: '🤖',
+      title: 'Tratamiento aceptado',
+      desc: `Se agregó: ${treatment.medicamento}`,
+      path: 'tratamientos',
+      evidence: ''
+    });
   }
 
 }
