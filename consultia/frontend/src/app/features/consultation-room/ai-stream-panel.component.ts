@@ -1,7 +1,8 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Subscription } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
 import { AiStreamState, FilledField } from '../../core/ai-stream.state';
+import { AiStreamService } from '../../core/ai-stream.service';
 
 @Component({
   selector: 'ai-stream-panel',
@@ -26,11 +27,29 @@ export class AiStreamPanelComponent implements OnInit, OnDestroy {
   private doneCount = 0;
   private totalCount = 0;
 
-  constructor(public state: AiStreamState) {}
+  /** Texto del asistente IA (streaming) */
+  aiText$: Observable<string>;
+
+  /** Campos faltantes */
+  missing$: Observable<string[]>;
+
+  /** Sugerencias */
+  suggestions$: Observable<string[]>;
+
+  constructor(
+    public state: AiStreamState,
+    private aiStream: AiStreamService
+  ) {
+    this.aiText$ = this.aiStream.aiText$;
+    this.missing$ = this.aiStream.missing$;
+    this.suggestions$ = this.aiStream.suggestions$;
+  }
 
   ngOnInit(): void {
     this.sub = this.state.list$.subscribe((list: FilledField[]) => {
       this.fields = list ?? [];
+
+      // Extraer secciones únicas
       this.sections = [...new Set(this.fields.map(x => x.section))];
 
       // abrir la primera sección si no hay una abierta
@@ -82,6 +101,34 @@ export class AiStreamPanelComponent implements OnInit, OnDestroy {
   /** abrir/cerrar acordeón */
   toggle(s: string) {
     this.open = this.open === s ? null : s;
+  }
+
+  /** Total de campos en una sección */
+  totalIn(s: string): number {
+    return this.bySection(s).length;
+  }
+
+  /** Verificar si una sección está completa */
+  isSectionComplete(s: string): boolean {
+    const fields = this.bySection(s);
+    if (fields.length === 0) return false;
+    return fields.every(f => f.value !== undefined && f.value !== '');
+  }
+
+  /** Total de secciones */
+  totalSections(): number {
+    return this.sections.length;
+  }
+
+  /** Secciones completadas */
+  completedSections(): number {
+    return this.sections.filter(s => this.isSectionComplete(s)).length;
+  }
+
+  /** Verifica si hay alguna actividad (texto de IA, sugerencias, o campos) */
+  hasActivity(): boolean {
+    // Mostrar contadores si hay secciones O si ya se está recibiendo datos de IA
+    return this.sections.length > 0 || this.fields.length > 0;
   }
 
   // --------- Acciones ----------

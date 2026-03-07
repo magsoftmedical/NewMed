@@ -1,0 +1,235 @@
+.ai-predictions-panel {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  margin: 16px 0;
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+
+    h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    .badge {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+  }
+
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    border-bottom: 2px solid #e5e7eb;
+
+    .tab {
+      background: none;
+      border: none;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: #6b7280;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+
+      &:hover {
+        color: #667eea;
+      }
+
+      &.active {
+        color: #667eea;
+        border-bottom-color: #667eea;
+      }
+
+      .count {
+        background: #e5e7eb;
+        color: #6b7280;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      &.active .count {
+        background: #667eea;
+        color: white;
+      }
+    }
+  }
+
+  .predictions-content {
+    max-height: 500px;
+    overflow-y: auto;
+
+    .prediction-card {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 12px;
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 12px;
+      align-items: center;
+      transition: all 0.2s;
+
+      &:hover {
+        background: #f3f4f6;
+        border-color: #d1d5db;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
+
+      .prediction-info {
+        .prediction-name {
+          font-size: 14px;
+          font-weight: 600;
+          color: #1f2937;
+          margin-bottom: 4px;
+        }
+
+        .prediction-meta {
+          display: flex;
+          gap: 8px;
+          font-size: 12px;
+
+          .cie-code {
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+          }
+
+          .prediction-type {
+            color: #6b7280;
+          }
+        }
+
+        .prediction-detail {
+          font-size: 12px;
+          color: #6b7280;
+          margin-top: 4px;
+        }
+      }
+
+      .prediction-confidence {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+        min-width: 100px;
+
+        .confidence-bar {
+          width: 100%;
+          height: 6px;
+          background: #e5e7eb;
+          border-radius: 3px;
+          overflow: hidden;
+
+          .confidence-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+          }
+        }
+
+        .confidence-text {
+          font-size: 11px;
+          font-weight: 600;
+          color: #6b7280;
+        }
+      }
+
+      .btn-accept {
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+
+        &:hover {
+          background: #5568d3;
+          transform: scale(1.05);
+        }
+
+        &:active {
+          transform: scale(0.98);
+        }
+      }
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 32px 16px;
+      color: #9ca3af;
+
+      p {
+        margin: 0;
+        font-size: 14px;
+      }
+    }
+  }
+}
+
+.no-predictions {
+  background: #f9fafb;
+  border: 2px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 32px 16px;
+  text-align: center;
+  margin: 16px 0;
+
+  p {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: #6b7280;
+  }
+
+  small {
+    color: #9ca3af;
+    font-size: 12px;
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .ai-predictions-panel {
+    .prediction-card {
+      grid-template-columns: 1fr;
+      gap: 8px;
+
+      .prediction-confidence {
+        align-items: flex-start;
+        width: 100%;
+      }
+
+      .btn-accept {
+        width: 100%;
+      }
+    }
+  }
+}

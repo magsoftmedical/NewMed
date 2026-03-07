@@ -67,9 +67,15 @@ SCHEMA: Dict[str, Any] = {
 					"type": "string",
 					"description": (
 						"Razón principal por la cual el paciente consulta. "
-						"Usualmente introducido con frases como 'acude para…' o 'el motivo de consulta es…'. "
-						"Debe ser breve, una o dos frases máximo. "
-						"Puede superponerse con sintomasPrincipales o relato."
+						"IMPORTANTE: Interpretar lenguaje natural del médico. "
+						"Frases que indican motivo de consulta: "
+						"- 'acude por...', 'viene por...', 'consulta por...', 'paciente con...' "
+						"- 'refiere...', 'presenta...', 'tiene...', 'manifiesta...' "
+						"- Cualquier síntoma o queja mencionada al inicio de la consulta. "
+						"- NO requiere la palabra literal 'motivo de consulta'. "
+						"Extraer la esencia: ¿por qué está aquí el paciente? "
+						"Ejemplos válidos: 'fiebre', 'dolor abdominal', 'tos', 'control', 'chequeo'. "
+						"Debe ser breve (1-5 palabras)."
 					)
 				},
             }
@@ -193,29 +199,98 @@ SCHEMA: Dict[str, Any] = {
         },
         "diagnosticos": {
             "type": "array",
-            "description": "Diagnósticos clínicos del paciente.",
+            "description": (
+                "Diagnósticos clínicos del paciente. "
+                "IMPORTANTE: Detectar cuando el médico menciona condiciones, enfermedades o impresiones diagnósticas. "
+                "Frases clave que indican diagnóstico: "
+                "- 'diagnóstico:', 'diagnóstico es:', 'se diagnostica:' "
+                "- 'impresión:', 'impresión diagnóstica:' "
+                "- 'probable:', 'probablemente:', 'sospecha de:' "
+                "- 'cuadro de:', 'cuadro compatible con:' "
+                "- 'se trata de:', 'parece ser:', 'compatible con:' "
+                "- 'presenta:', 'tiene:' seguido de una condición médica (no síntoma simple) "
+                "- Menciones directas de enfermedades: 'faringitis', 'gripe', 'hipertensión', etc. "
+                "NO confundir con síntomas aislados. Un diagnóstico es una CONDICIÓN o ENFERMEDAD. "
+                "Si se menciona de forma natural ('parece una gripe'), agregarlo igual."
+            ),
             "items": {
                 "type": "object",
                 "properties": {
-                    "nombre": {"type": "string", "description": "Nombre o etiqueta del diagnóstico."},
+                    "nombre": {
+                        "type": "string",
+                        "description": (
+                            "Nombre de la enfermedad o condición. "
+                            "Aceptar tanto términos técnicos como coloquiales: "
+                            "- Técnico: 'faringitis aguda', 'hipertensión arterial' "
+                            "- Coloquial: 'gripe', 'presión alta', 'garganta inflamada' "
+                            "Normalizar a terminología médica si es posible."
+                        )
+                    },
                     "tipo": {
                         "type": "string",
                         "enum": ["presuntivo", "definitivo"],
-                        "description": "Tipo de diagnóstico: presuntivo o definitivo."
+                        "description": (
+                            "Tipo de diagnóstico. "
+                            "Si NO se especifica explícitamente, asumir 'presuntivo'. "
+                            "Palabras para 'presuntivo': probable, sospecha, posible, parece, compatible. "
+                            "Palabras para 'definitivo': confirmado, definitivo, diagnosticado, establecido."
+                        )
                     },
-                    "cie10": {"type": "string", "description": "Código CIE-10 del diagnóstico."}
+                    "cie10": {
+                        "type": "string",
+                        "description": "Código CIE-10. Solo llenar si se menciona explícitamente (ejemplo: 'J02.9', 'CIE J02')."
+                    }
                 }
             }
         },
         "tratamientos": {
             "type": "array",
-            "description": "Tratamientos indicados al paciente.",
+            "description": (
+                "Tratamientos indicados al paciente. "
+                "IMPORTANTE: Detectar medicamentos, procedimientos e indicaciones terapéuticas en lenguaje natural. "
+                "Frases clave que indican tratamiento: "
+                "- 'tratamiento:', 'plan:', 'plan de tratamiento:' "
+                "- 'indicar:', 'prescribir:', 'recetar:', 'formular:' "
+                "- 'dar:', 'le doy:', 'le voy a dar:', 'tomar:' "
+                "- 'administrar:', 'aplicar:', 'colocar:' "
+                "- Menciones directas de medicamentos (paracetamol, ibuprofeno, etc.) "
+                "- 'continuar con:', 'suspender:', 'iniciar:', 'cambiar a:' "
+                "- Indicaciones no farmacológicas: 'reposo', 'dieta', 'ejercicio', 'abundantes líquidos' "
+                "Detectar también dosis mencionadas junto al medicamento."
+            ),
             "items": {
                 "type": "object",
                 "properties": {
-                    "medicamento": {"type": "string", "description": "Nombre del medicamento o procedimiento."},
-                    "dosisIndicacion": {"type": "string", "description": "Dosis o indicación de uso."},
-                    "gtin": {"type": "string", "description": "Código GTIN o identificador del medicamento."}
+                    "medicamento": {
+                        "type": "string",
+                        "description": (
+                            "Nombre del medicamento, procedimiento o indicación. "
+                            "Aceptar múltiples formatos: "
+                            "- Nombre genérico: 'paracetamol', 'ibuprofeno' "
+                            "- Nombre comercial: 'Tylenol', 'Advil' "
+                            "- Descripción coloquial: 'analgésico', 'antiinflamatorio', 'pastilla para el dolor' "
+                            "- Indicaciones no farmacológicas: 'reposo', 'dieta blanda', 'tomar agua' "
+                            "Normalizar a nombre genérico cuando sea posible."
+                        )
+                    },
+                    "dosisIndicacion": {
+                        "type": "string",
+                        "description": (
+                            "Dosis, frecuencia y duración del tratamiento. "
+                            "Detectar patrones de dosificación en lenguaje natural: "
+                            "- 'X mg/ml cada Y horas' "
+                            "- 'una tableta/pastilla/cápsula' "
+                            "- 'dos veces al día', 'tres veces al día', 'cada 8 horas', 'cada 12 horas' "
+                            "- 'por X días', 'durante una semana', 'hasta que se acabe' "
+                            "- 'antes/después de las comidas', 'en ayunas' "
+                            "- 'si hay dolor', 'en caso de fiebre' "
+                            "Ejemplos: 'una pastilla cada 8 horas por 5 días', '500mg dos veces al día'."
+                        )
+                    },
+                    "gtin": {
+                        "type": "string",
+                        "description": "Código GTIN o identificador del medicamento. Solo llenar si se menciona explícitamente."
+                    }
                 }
             }
         },

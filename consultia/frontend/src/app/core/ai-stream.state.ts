@@ -8,6 +8,11 @@ export interface FilledField {
 }
 
 function pathToSection(p: string) {
+  // IGNORAR paths que son metadata de IA (no son campos del formulario)
+  if (p.includes('sugerencias') || p.includes('Sugerencias')) return '__IGNORE__';
+  if (p.includes('faltantes') || p.includes('Campos faltantes')) return '__IGNORE__';
+  if (p.includes('missing')) return '__IGNORE__';
+
   if (p.startsWith('examenClinico.signosVitales')) return 'Signos vitales';
   if (p.startsWith('examenClinico')) return 'Examen clínico';
   if (p.startsWith('anamnesis')) return 'Anamnesis';
@@ -31,9 +36,16 @@ export class AiStreamState {
 
   applyDelta(delta: { path: string; value: any }) {
     const k = delta.path, now = Date.now();
+
+    // IGNORAR campos que no son del formulario (metadata de IA)
+    const section = pathToSection(k);
+    if (section === '__IGNORE__') {
+      return; // No agregar este campo
+    }
+
     const ex = this.fields.get(k);
     if (!ex) {
-      this.fields.set(k, { path: k, label: label(k), section: pathToSection(k), value: delta.value, status: 'new', updatedAt: now });
+      this.fields.set(k, { path: k, label: label(k), section, value: delta.value, status: 'new', updatedAt: now });
     } else {
       ex.value = delta.value;
       ex.status = ex.status === 'empty' ? 'new' : 'updated';
@@ -42,7 +54,7 @@ export class AiStreamState {
     }
     this.emit();
 
-    // quitar el “updated” después de 3s
+    // quitar el "updated" después de 3s
     setTimeout(() => {
       const f = this.fields.get(k);
       if (f && f.status === 'updated') { f.status = 'new'; this.fields.set(k, f); this.emit(); }

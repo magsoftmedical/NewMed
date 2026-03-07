@@ -1,84 +1,278 @@
 ﻿/* ai-stream-panel.component.scss */
 /* El panel usa variables del tema; nada hardcodeado */
-:host { display: block; }
-
-/* Contenedor del panel (interno a la card) */
-.panel {
-  display: grid;
-  gap: 12px;
+:host {
+  display: block;
+  height: 100%;
 }
 
-/* Header del panel (antes .sticky con gradiente fijo) */
-.sticky{
+/* Contenedor del panel con layout flex */
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 0;
+}
+
+/* Header fijo del panel */
+.sticky {
+  flex-shrink: 0;
   background: color-mix(in srgb, var(--card) 96%, #000 4%);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 10px;
+  border-radius: 12px 12px 0 0;
+  padding: 12px;
+  border-bottom: 2px solid var(--border);
 }
-.title{ font-weight: 700; margin-bottom: 6px; color: var(--fg); }
+.title {
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--fg);
+  font-size: 1.1rem;
+}
+
+/* Contador de secciones */
+.section-progress {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  background: color-mix(in srgb, var(--fg) 5%, transparent);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.stat-icon {
+  font-size: 1rem;
+}
+
+.stat-label {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.stat-value {
+  color: var(--fg);
+  font-weight: 700;
+}
+
+.no-data-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  color: var(--muted);
+  font-style: italic;
+  font-size: 0.9rem;
+  background: color-mix(in srgb, var(--fg) 3%, transparent);
+  border-radius: 8px;
+  border: 1px dashed var(--border);
+  margin-bottom: 10px;
+}
 
 /* Barra de progreso (pista y relleno con tokens) */
-.progress{
+.progress {
   height: 8px;
   border-radius: 8px;
   overflow: hidden;
   background: color-mix(in srgb, var(--card) 85%, var(--border) 15%);
   border: 1px solid var(--border);
 }
-.progress .bar{
+.progress .bar {
   height: 100%;
   width: calc(var(--p, 0) * 1%);
   background: linear-gradient(90deg, var(--accent), var(--accent-2));
   transition: width .25s ease;
 }
 
-/* Sección plegable */
-.section{
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 6px;
-  border-bottom: 1px solid var(--border);
-  user-select: none;
+/* Contenedor con scroll */
+.scrollable-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  /* Scrollbar personalizado */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: color-mix(in srgb, var(--card) 90%, var(--border) 10%);
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--fg) 30%, transparent);
+    border-radius: 4px;
+    &:hover {
+      background: color-mix(in srgb, var(--fg) 50%, transparent);
+    }
+  }
+}
+
+/* Footer fijo */
+.sticky-footer {
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--card) 96%, #000 4%);
+  border: 1px solid var(--border);
+  border-radius: 0 0 12px 12px;
+  padding: 10px;
+  border-top: 2px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Tarjetas fijas (AI Summary y Sugerencias) */
+.fixed-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  flex-shrink: 0;
+}
+
+.section-header {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 10px;
   color: var(--fg);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
 }
-.section:hover{
-  background: color-mix(in srgb, var(--fg) 6%, transparent);
+
+.section-header.clickable {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
   border-radius: 8px;
+  transition: background 0.2s;
+
+  &:hover {
+    background: color-mix(in srgb, var(--fg) 6%, transparent);
+  }
 }
-.count{
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.completion-icon {
+  font-size: 1.1rem;
+  transition: transform 0.3s;
+
+  &.completed {
+    transform: scale(1.2);
+  }
+}
+
+.expand-icon {
+  font-size: 0.7rem;
+  color: var(--muted);
+  transition: transform 0.2s;
+}
+
+.count {
   background: color-mix(in srgb, var(--fg) 10%, transparent);
   color: var(--fg);
-  padding: 2px 8px; border-radius: 999px; font-size: .75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: .75rem;
   border: 1px solid var(--border);
+  font-weight: 600;
 }
 
 /* Lista de campos */
-.list{
-  list-style: none; margin: 0; padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 12px; overflow: hidden;
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-radius: 8px;
+  overflow: hidden;
   background: var(--card);
 }
-.list.collapsed{ display: none; }
+.list.collapsed {
+  display: none;
+}
 
-li{
-  display: grid; grid-template-columns: 14px 1fr auto; gap: 10px; align-items: center;
-  padding: 8px 10px;
+.form-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+li {
+  display: grid;
+  grid-template-columns: 14px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border);
   background: var(--card);
+  transition: background 0.3s;
 }
-li:last-child{ border-bottom: 0; }
-li.updated{ animation: glow 1.2s ease; }
-@keyframes glow{
-  from{ background: color-mix(in srgb, var(--accent) 12%, transparent) }
-  to  { background: transparent }
+li:last-child {
+  border-bottom: 0;
+}
+li.updated {
+  animation: glow 1.2s ease;
+}
+li.completed {
+  background: color-mix(in srgb, var(--accent) 5%, var(--card));
+}
+@keyframes glow {
+  from {
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+  to {
+    background: transparent;
+  }
 }
 
 /* Estado del punto */
-.dot{ width: 10px; height: 10px; border-radius: 50%; background: color-mix(in srgb, var(--fg) 25%, transparent); }
-.dot.new{ background: var(--accent-2); }
-.dot.upd{ background: #eab308; }        /* puedes crear --warn si quieres */
-.dot.empty{ background: #6b7280; }
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #6b7280;
+  transition: all 0.3s;
+}
+.dot.new {
+  background: var(--accent-2);
+  box-shadow: 0 0 8px var(--accent-2);
+}
+.dot.upd {
+  background: #eab308;
+  box-shadow: 0 0 8px #eab308;
+}
+.dot.empty {
+  background: #6b7280;
+}
+.dot.filled {
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+}
 
 /* Etiquetas y valores */
 .label{ color: var(--fg); font-weight: 600; }
@@ -97,3 +291,97 @@ li.updated{ animation: glow 1.2s ease; }
   border-radius: 8px; padding: 4px 8px; cursor: pointer;
 }
 .mini:hover{ background: color-mix(in srgb, var(--fg) 6%, transparent); }
+
+/* AI Summary Section */
+.ai-summary {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, var(--card)), var(--card));
+  border: 2px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.ai-text {
+  color: var(--fg);
+  line-height: 1.7;
+  padding: 12px;
+  background: var(--card);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-size: 0.95rem;
+  min-height: 60px;
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.spinner {
+  animation: spin 2s linear infinite;
+  font-size: 1.2rem;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Última Sugerencia - Estilo Chat */
+.latest-suggestion {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-2) 10%, var(--card)), var(--card));
+  border: 2px solid color-mix(in srgb, var(--accent-2) 40%, var(--border));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-2) 10%, transparent);
+}
+
+.chat-message {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.message-bubble {
+  background: color-mix(in srgb, var(--accent-2) 15%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--accent-2) 30%, var(--border));
+  border-radius: 12px 12px 12px 4px;
+  padding: 12px;
+  color: var(--fg);
+  line-height: 1.6;
+  position: relative;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-count {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: right;
+  font-style: italic;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 16px;
+  color: var(--muted);
+  font-style: italic;
+  font-size: 0.9rem;
+}

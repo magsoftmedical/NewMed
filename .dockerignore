@@ -1,0 +1,26 @@
+# Node modules
+consultia/frontend/node_modules
+consultia/frontend/.angular
+
+# Python
+consultia/backend/__pycache__
+consultia/backend/*.pyc
+consultia/backend/.pytest_cache
+consultia/backend/.venv
+consultia/backend/venv
+
+# Environment files
+.env.local
+*.log
+
+# IDE
+.vscode
+.idea
+
+# Git
+.git
+.gitignore
+
+# Docs
+*.md
+docs/

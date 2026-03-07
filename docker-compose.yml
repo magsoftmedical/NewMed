@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  consultia:
+    build: .
+    ports:
+      - "8001:8001"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ALLOWED_ORIGINS=https://tu-dominio.com,http://localhost:4200
+    volumes:
+      - ./consultia/backend:/app/backend
+      - ./consultia/frontend/dist/consultia:/app/frontend/dist/consultia
+    restart: unless-stopped
