@@ -1,0 +1,259 @@
+{
+  "ejemplos": {
+    "nota": "Estos son ejemplos de requests/responses para los endpoints de Medberos AI. Actualizar con los JSONs reales que envíe Daniel.",
+
+    "predict_diagnoses_request": {
+      "descripcion": "Ejemplo de request para predecir diagnósticos",
+      "endpoint": "POST /medberos/predict-diagnoses",
+      "body": {
+        "form": {
+          "afiliacion": {
+            "nombreCompleto": "María González",
+            "edad": {
+              "anios": 35,
+              "meses": 0
+            },
+            "sexo": "F",
+            "grupoSangre": "O+"
+          },
+          "anamnesis": {
+            "tiempoEnfermedad": "3 días",
+            "sintomasPrincipales": [
+              "fiebre",
+              "tos seca",
+              "dolor de cabeza",
+              "dolor muscular"
+            ],
+            "relato": "Paciente refiere cuadro de fiebre desde hace 3 días, acompañado de tos seca persistente, dolor de cabeza frontal y dolores musculares generalizados.",
+            "funcionesBiologicas": {
+              "apetito": "disminuido",
+              "sed": "aumentada",
+              "orina": "normal",
+              "deposiciones": "normal",
+              "sueno": "interrumpido por tos"
+            },
+            "antecedentes": {
+              "personales": ["asma leve"],
+              "padre": [],
+              "madre": ["hipertensión"]
+            },
+            "alergias": [],
+            "medicamentos": []
+          },
+          "examenClinico": {
+            "signosVitales": {
+              "PA": "120/80",
+              "FC": 88,
+              "FR": 20,
+              "temperatura": "38.5",
+              "SpO2": "96%",
+              "peso": 65,
+              "talla": 165
+            },
+            "estadoGeneral": "Regular estado general, febril al examen",
+            "sistemas": {
+              "pulmones": "murmullo vesicular presente, sin ruidos agregados",
+              "corazon": "ruidos cardíacos rítmicos, sin soplos",
+              "abdomen": "blando, depresible, no doloroso"
+            }
+          }
+        },
+        "doctorComments": "Paciente refiere que podría ser una gripe. Tiene antecedente de asma pero está controlada. Cuadro compatible con infección viral respiratoria alta."
+      }
+    },
+
+    "predict_diagnoses_response": {
+      "descripcion": "Ejemplo de respuesta de predicción de diagnósticos",
+      "response": {
+        "success": true,
+        "diagnosticos": [
+          {
+            "nombre": "Gripe",
+            "cie10": "J11.1",
+            "tipo": "Presuntivo",
+            "confianza": 0.85
+          },
+          {
+            "nombre": "Infección viral respiratoria aguda",
+            "cie10": "J06.9",
+            "tipo": "Presuntivo",
+            "confianza": 0.78
+          },
+          {
+            "nombre": "Faringitis aguda",
+            "cie10": "J02.9",
+            "tipo": "Presuntivo",
+            "confianza": 0.65
+          }
+        ]
+      }
+    },
+
+    "predict_exams_request": {
+      "descripcion": "Ejemplo de request para predecir exámenes",
+      "endpoint": "POST /medberos/predict-exams",
+      "body": {
+        "form": {
+          "afiliacion": {
+            "edad": {"anios": 35},
+            "sexo": "F"
+          },
+          "anamnesis": {
+            "sintomasPrincipales": ["fiebre", "tos seca", "dolor de cabeza"]
+          },
+          "examenClinico": {
+            "signosVitales": {
+              "temperatura": "38.5"
+            }
+          }
+        },
+        "doctorComments": "Cuadro febril de 3 días. Solicitar exámenes para descartar infección bacteriana."
+      }
+    },
+
+    "predict_exams_response": {
+      "descripcion": "Ejemplo de respuesta de predicción de exámenes",
+      "response": {
+        "success": true,
+        "examenes": [
+          "Hemograma completo",
+          "Proteína C reactiva (PCR)",
+          "Velocidad de sedimentación globular (VSG)",
+          "Radiografía de tórax",
+          "Hisopado nasofaríngeo (para virus respiratorios)"
+        ]
+      }
+    },
+
+    "predict_treatments_request": {
+      "descripcion": "Ejemplo de request para predecir tratamientos",
+      "endpoint": "POST /medberos/predict-treatments",
+      "body": {
+        "form": {
+          "afiliacion": {
+            "edad": {"anios": 35},
+            "sexo": "F"
+          },
+          "anamnesis": {
+            "sintomasPrincipales": ["fiebre", "dolor de cabeza"],
+            "alergias": []
+          },
+          "diagnosticos": [
+            {
+              "nombre": "Gripe",
+              "cie10": "J11.1",
+              "tipo": "Presuntivo"
+            }
+          ]
+        },
+        "doctorComments": "Iniciar tratamiento sintomático. Paciente no tiene alergias conocidas."
+      }
+    },
+
+    "predict_treatments_response": {
+      "descripcion": "Ejemplo de respuesta de predicción de tratamientos",
+      "response": {
+        "success": true,
+        "tratamientos": [
+          {
+            "medicamento": "Paracetamol",
+            "dosisIndicacion": "500mg cada 6 horas por 5 días",
+            "confianza": 0.92
+          },
+          {
+            "medicamento": "Ibuprofeno",
+            "dosisIndicacion": "400mg cada 8 horas si persiste fiebre",
+            "confianza": 0.85
+          },
+          {
+            "medicamento": "Complejo B",
+            "dosisIndicacion": "1 tableta al día por 7 días",
+            "confianza": 0.70
+          }
+        ]
+      }
+    },
+
+    "conversion_consultia_to_medberos": {
+      "descripcion": "Ejemplo de cómo se convierte el formulario de Consult-IA al formato de Medberos",
+      "consultia_form": {
+        "afiliacion": {
+          "edad": {"anios": 35},
+          "sexo": "F",
+          "grupoSangre": "O+"
+        },
+        "anamnesis": {
+          "sintomasPrincipales": ["fiebre", "tos"],
+          "tiempoEnfermedad": "3 días",
+          "alergias": ["penicilina"],
+          "antecedentes": {
+            "personales": ["asma"]
+          }
+        },
+        "examenClinico": {
+          "signosVitales": {
+            "PA": "120/80",
+            "FC": 88,
+            "temperatura": "38.5",
+            "peso": 65,
+            "talla": 165
+          }
+        }
+      },
+      "medberos_payload": {
+        "PatientAge": 35,
+        "PatientSex": "F",
+        "BloodType": "O+",
+        "Symptoms": ["fiebre", "tos"],
+        "IllnessDuration": "3 días",
+        "Allergies": ["penicilina"],
+        "PersonalHistory": ["asma"],
+        "VitalSigns": {
+          "BloodPressure": "120/80",
+          "HeartRate": 88,
+          "Temperature": "38.5",
+          "Weight": 65,
+          "Height": 165
+        },
+        "DoctorComments": "Información adicional del médico via TIMA"
+      }
+    },
+
+    "uso_con_tima": {
+      "descripcion": "Ejemplo de cómo usar las predicciones junto con el flujo de voz de TIMA",
+      "paso_1_transcripcion": "Paciente femenina de 35 años con fiebre desde hace 3 días. Tos seca. Dolor de cabeza.",
+      "paso_2_formulario_parcial": {
+        "afiliacion": {
+          "edad": {"anios": 35},
+          "sexo": "F"
+        },
+        "anamnesis": {
+          "sintomasPrincipales": ["fiebre", "tos seca", "dolor de cabeza"],
+          "tiempoEnfermedad": "3 días"
+        }
+      },
+      "paso_3_llamada_medberos": {
+        "form": "/* formulario parcial */",
+        "doctorComments": "Paciente femenina de 35 años con fiebre desde hace 3 días. Tos seca. Dolor de cabeza."
+      },
+      "paso_4_predicciones_recibidas": {
+        "diagnosticos": [
+          {"nombre": "Gripe", "cie10": "J11.1", "confianza": 0.85}
+        ],
+        "examenes": ["Hemograma completo", "PCR"],
+        "tratamientos": [
+          {"medicamento": "Paracetamol", "dosisIndicacion": "500mg c/6h"}
+        ]
+      },
+      "paso_5_ui_sugerencias": "TIMA muestra las sugerencias al médico en el panel lateral. El médico puede aceptarlas con un clic o modificarlas."
+    }
+  },
+
+  "notas_importantes": [
+    "El campo DoctorComments es CLAVE - incluye toda la transcripción de voz y contexto adicional",
+    "No es necesario tener todos los campos completos - la IA funciona con información parcial",
+    "Los valores de confianza ayudan al médico a evaluar qué tan probable es cada predicción",
+    "Las predicciones son SUGERENCIAS - el médico siempre tiene la decisión final",
+    "Actualizar este archivo con los JSONs reales cuando Daniel los envíe"
+  ]
+}

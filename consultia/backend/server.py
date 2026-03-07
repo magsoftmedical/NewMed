@@ -23,6 +23,15 @@ from PIL import Image
 # SDK OpenAI nuevo (>=1.0)
 from openai import OpenAI
 
+# Medberos AI Integration
+from medberos_client import medberos_client
+from medberos_mapper import (
+    consultia_to_medberos_payload,
+    medberos_diagnoses_to_consultia,
+    medberos_exams_to_consultia,
+    medberos_treatments_to_consultia
+)
+
 # ------------------ Config ------------------
 
 load_dotenv()  # lee .env si existe
@@ -370,6 +379,139 @@ def root():
 def health():
     ok = bool(OPENAI_API_KEY)
     return JSONResponse({"ok": ok, "model_text": OPENAI_MODEL_TEXT, "model_json": OPENAI_MODEL_JSON})
+
+# ------------------ Medberos AI Endpoints ------------------
+
+@app.get("/medberos/test")
+async def test_medberos():
+    """Prueba la conexión con Medberos AI API."""
+    result = await medberos_client.test_connection()
+    return JSONResponse(result)
+
+@app.post("/medberos/predict-all")
+async def predict_all_endpoint(request_data: Dict[str, Any]):
+    """
+    Endpoint unificado que devuelve todas las predicciones.
+    Por ahora solo diagnósticos funcionan, exámenes y tratamientos quedan vacíos.
+
+    Body:
+        form: Formulario de historia clínica de Consult-IA
+        doctorComments: (opcional) Comentarios/transcripción del médico
+    """
+    form = request_data.get("form", {})
+    doctor_comments = request_data.get("doctorComments", "")
+
+    # Convertir al formato de Medberos
+    payload = consultia_to_medberos_payload(form, doctor_comments)
+
+    # Solo llamar a diagnósticos (que funciona)
+    result = await medberos_client.predict_diagnoses(payload)
+
+    diagnosticos = []
+    if "error" not in result:
+        predictions = result.get("predictions", [])
+        diagnosticos = medberos_diagnoses_to_consultia(predictions)
+
+    # Devolver estructura completa
+    return JSONResponse({
+        "success": True,
+        "diagnosticos": diagnosticos,
+        "examenes": [],  # Por ahora vacío (API tiene error 500)
+        "tratamientos": []  # Por ahora vacío (API tiene error 500)
+    })
+
+@app.post("/medberos/predict-diagnoses")
+async def predict_diagnoses_endpoint(request_data: Dict[str, Any]):
+    """
+    Predice diagnósticos usando Medberos AI.
+
+    Body:
+        form: Formulario de historia clínica de Consult-IA
+        doctorComments: (opcional) Comentarios/transcripción del médico
+    """
+    form = request_data.get("form", {})
+    doctor_comments = request_data.get("doctorComments", "")
+
+    # Convertir al formato de Medberos
+    payload = consultia_to_medberos_payload(form, doctor_comments)
+
+    # Llamar a Medberos AI
+    result = await medberos_client.predict_diagnoses(payload)
+
+    if "error" in result:
+        return JSONResponse({"success": False, "error": result["error"]}, status_code=500)
+
+    # Convertir predicciones al formato de Consult-IA
+    predictions = result.get("predictions", [])
+    diagnosticos = medberos_diagnoses_to_consultia(predictions)
+
+    return JSONResponse({
+        "success": True,
+        "diagnosticos": diagnosticos,
+        "raw": result  # Para debugging
+    })
+
+@app.post("/medberos/predict-exams")
+async def predict_exams_endpoint(request_data: Dict[str, Any]):
+    """
+    Predice exámenes médicos usando Medberos AI.
+
+    Body:
+        form: Formulario de historia clínica de Consult-IA
+        doctorComments: (opcional) Comentarios/transcripción del médico
+    """
+    form = request_data.get("form", {})
+    doctor_comments = request_data.get("doctorComments", "")
+
+    # Convertir al formato de Medberos
+    payload = consultia_to_medberos_payload(form, doctor_comments)
+
+    # Llamar a Medberos AI
+    result = await medberos_client.predict_exams(payload)
+
+    if "error" in result:
+        return JSONResponse({"success": False, "error": result["error"]}, status_code=500)
+
+    # Convertir predicciones al formato de Consult-IA
+    predictions = result.get("predictions", [])
+    exams = medberos_exams_to_consultia(predictions)
+
+    return JSONResponse({
+        "success": True,
+        "examenes": exams,
+        "raw": result
+    })
+
+@app.post("/medberos/predict-treatments")
+async def predict_treatments_endpoint(request_data: Dict[str, Any]):
+    """
+    Predice tratamientos usando Medberos AI.
+
+    Body:
+        form: Formulario de historia clínica de Consult-IA
+        doctorComments: (opcional) Comentarios/transcripción del médico
+    """
+    form = request_data.get("form", {})
+    doctor_comments = request_data.get("doctorComments", "")
+
+    # Convertir al formato de Medberos
+    payload = consultia_to_medberos_payload(form, doctor_comments)
+
+    # Llamar a Medberos AI
+    result = await medberos_client.predict_treatments(payload)
+
+    if "error" in result:
+        return JSONResponse({"success": False, "error": result["error"]}, status_code=500)
+
+    # Convertir predicciones al formato de Consult-IA
+    predictions = result.get("predictions", [])
+    tratamientos = medberos_treatments_to_consultia(predictions)
+
+    return JSONResponse({
+        "success": True,
+        "tratamientos": tratamientos,
+        "raw": result
+    })
 
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
@@ -919,6 +1061,50 @@ Devuelve SOLO el JSON, sin explicaciones adicionales."""
                 "error": str(e)
             }
         )
+
+# ------------------ Whisper Transcription Endpoint ------------------
+
+@app.post("/transcribe")
+async def transcribe_audio(file: UploadFile = File(...)):
+    """
+    Transcribe audio usando OpenAI Whisper.
+    Fallback para browsers que no soportan Web Speech API (Firefox, etc).
+
+    Acepta: webm, mp4, mp3, wav, ogg, m4a
+    Devuelve: {"text": "transcripción..."}
+    """
+    try:
+        logger.info(f"[WHISPER] Received audio: {file.filename}, content_type: {file.content_type}")
+
+        contents = await file.read()
+        if not contents:
+            return JSONResponse(status_code=400, content={"error": "Archivo de audio vacío"})
+
+        # Determinar extensión apropiada para Whisper
+        fname = file.filename or "audio.webm"
+        ext = fname.rsplit(".", 1)[-1].lower() if "." in fname else "webm"
+        # Whisper acepta: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, webm
+        allowed = {"flac", "mp3", "mp4", "mpeg", "mpga", "m4a", "ogg", "wav", "webm"}
+        if ext not in allowed:
+            ext = "webm"
+
+        audio_file = io.BytesIO(contents)
+        audio_file.name = f"audio.{ext}"
+
+        response = client.audio.transcriptions.create(
+            model="whisper-1",
+            file=audio_file,
+            language="es",
+        )
+
+        text = response.text.strip()
+        logger.info(f"[WHISPER] Transcribed: {text[:100]}...")
+        return JSONResponse(content={"text": text})
+
+    except Exception as e:
+        logger.error(f"[WHISPER] Error: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
 
 # ------------------ Main ------------------
 
