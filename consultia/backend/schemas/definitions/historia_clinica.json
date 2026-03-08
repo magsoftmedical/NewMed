@@ -1,0 +1,234 @@
+{
+  "id": "historia_clinica",
+  "name": "Historia Clínica",
+  "required_keys": [
+    "afiliacion.motivoConsulta",
+    "anamnesis.sintomasPrincipales",
+    "diagnosticos",
+    "tratamientos"
+  ],
+  "schema": {
+    "type": "object",
+    "properties": {
+      "afiliacion": {
+        "type": "object",
+        "description": "Datos administrativos del paciente y de la consulta.",
+        "properties": {
+          "nombreCompleto": {
+            "type": "string",
+            "description": "Nombre completo del paciente."
+          },
+          "edad": {
+            "type": "object",
+            "description": "Edad del paciente expresada en años y meses.",
+            "properties": {
+              "anios": {
+                "type": ["integer", "null"],
+                "description": "Edad en años completos."
+              },
+              "meses": {
+                "type": ["integer", "null"],
+                "description": "Edad adicional en meses."
+              }
+            }
+          },
+          "sexo": {
+            "type": "string",
+            "enum": ["masculino", "femenino"],
+            "description": "Sexo biológico o género del paciente. Solo puede ser 'masculino' o 'femenino'."
+          },
+          "dni": {
+            "type": "string",
+            "description": "Documento nacional de identidad del paciente."
+          },
+          "grupoSangre": {
+            "type": "string",
+            "description": "Grupo sanguíneo del paciente (ejemplo: O+, A-)."
+          },
+          "fechaHora": {
+            "type": "string",
+            "description": "Fecha y hora de la consulta."
+          },
+          "seguro": {
+            "type": "string",
+            "description": "Entidad aseguradora del paciente."
+          },
+          "tipoConsulta": {
+            "type": "string",
+            "description": "Tipo de consulta (ejemplo: ambulatoria, emergencia, primera vez)."
+          },
+          "numeroSeguro": {
+            "type": "string",
+            "description": "Número de seguro o póliza del paciente."
+          },
+          "motivoConsulta": {
+            "type": "string",
+            "description": "Razón principal por la cual el paciente consulta. IMPORTANTE: Interpretar lenguaje natural del médico. Frases que indican motivo de consulta: - 'acude por...', 'viene por...', 'consulta por...', 'paciente con...' - 'refiere...', 'presenta...', 'tiene...', 'manifiesta...' - Cualquier síntoma o queja mencionada al inicio de la consulta. - NO requiere la palabra literal 'motivo de consulta'. Extraer la esencia: ¿por qué está aquí el paciente? Ejemplos válidos: 'fiebre', 'dolor abdominal', 'tos', 'control', 'chequeo'. Debe ser breve (1-5 palabras)."
+          }
+        }
+      },
+      "anamnesis": {
+        "type": "object",
+        "description": "Historia clínica del paciente contada en la entrevista.",
+        "properties": {
+          "tiempoEnfermedad": {
+            "type": "string",
+            "description": "Tiempo de evolución de la enfermedad actual."
+          },
+          "sintomasPrincipales": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Lista breve de síntomas claves, cada uno de 1-3 palabras (ejemplo: 'fiebre', 'dolor abdominal'). Si el paciente menciona múltiples síntomas, dividirlos en elementos separados. Puede aparecer también en relato o motivoConsulta."
+          },
+          "relato": {
+            "type": "string",
+            "description": "Narrativa libre del paciente sobre su condición, en forma de oración o párrafo. Puede incluir los síntomas principales y el motivo, pero debe mantenerse como narración continua."
+          },
+          "funcionesBiologicas": {
+            "type": "object",
+            "description": "Funciones biológicas básicas.",
+            "properties": {
+              "apetito": {"type": "string", "description": "Estado del apetito."},
+              "sed": {"type": "string", "description": "Estado de la sed."},
+              "orina": {"type": "string", "description": "Características de la orina."},
+              "deposiciones": {"type": "string", "description": "Características de las deposiciones."},
+              "sueno": {"type": "string", "description": "Calidad y cantidad del sueño."}
+            }
+          },
+          "antecedentes": {
+            "type": "object",
+            "description": "Antecedentes médicos del paciente y su familia.",
+            "properties": {
+              "personales": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Antecedentes médicos personales relevantes."
+              },
+              "padre": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Antecedentes médicos del padre."
+              },
+              "madre": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Antecedentes médicos de la madre."
+              }
+            }
+          },
+          "alergias": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Alergias conocidas del paciente."
+          },
+          "medicamentos": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Medicamentos que el paciente está tomando actualmente."
+          }
+        }
+      },
+      "examenClinico": {
+        "type": "object",
+        "description": "Hallazgos del examen clínico del paciente.",
+        "properties": {
+          "signosVitales": {
+            "type": "object",
+            "description": "Mediciones básicas de signos vitales.",
+            "properties": {
+              "PA": {"type": "string", "description": "Presión arterial (ejemplo: 120/80)."},
+              "FC": {"type": ["number", "null"], "description": "Frecuencia cardíaca (latidos por minuto)."},
+              "FR": {"type": ["number", "null"], "description": "Frecuencia respiratoria (respiraciones por minuto)."},
+              "temperatura": {"type": ["number", "null"], "description": "Temperatura corporal en °C."},
+              "SpO2": {"type": ["number", "null"], "description": "Saturación de oxígeno en % (ejemplo 98% o 98 por ciento)."},
+              "IMC": {"type": ["number", "null"], "description": "Índice de masa corporal."},
+              "peso": {"type": ["number", "null"], "description": "Peso en kilogramos."},
+              "talla": {"type": ["number", "null"], "description": "Talla en centímetros."},
+              "glasgow": {"type": ["number", "null"], "description": "Escala de coma de Glasgow."}
+            }
+          },
+          "estadoGeneral": {
+            "type": "string",
+            "description": "Descripción breve del estado general del paciente."
+          },
+          "descripcionGeneral": {
+            "type": "string",
+            "description": "Descripción detallada de los hallazgos clínicos generales."
+          },
+          "sistemas": {
+            "type": "object",
+            "description": "Examen físico por sistemas.",
+            "properties": {
+              "piel": {"type": "string", "description": "Hallazgos en la piel."},
+              "tcs": {"type": "string", "description": "Hallazgos en el tejido celular subcutáneo."},
+              "cabeza": {"type": "string", "description": "Hallazgos en cabeza."},
+              "cuello": {"type": "string", "description": "Hallazgos en cuello."},
+              "torax": {"type": "string", "description": "Hallazgos en tórax."},
+              "pulmones": {"type": "string", "description": "Hallazgos en pulmones."},
+              "corazon": {"type": "string", "description": "Hallazgos en corazón."},
+              "mamasAxilas": {"type": "string", "description": "Hallazgos en mamas y axilas."},
+              "abdomen": {"type": "string", "description": "Hallazgos en abdomen."},
+              "genitoUrinario": {"type": "string", "description": "Hallazgos en aparato genitourinario."},
+              "rectalPerianal": {"type": "string", "description": "Hallazgos en examen rectal y perianal."},
+              "extremidades": {"type": "string", "description": "Hallazgos en extremidades."},
+              "vascularPeriferico": {"type": "string", "description": "Hallazgos en sistema vascular periférico."},
+              "neurologico": {"type": "string", "description": "Hallazgos en examen neurológico."}
+            }
+          }
+        }
+      },
+      "diagnosticos": {
+        "type": "array",
+        "description": "Diagnósticos clínicos del paciente. IMPORTANTE: Detectar cuando el médico menciona condiciones, enfermedades o impresiones diagnósticas. Frases clave que indican diagnóstico: - 'diagnóstico:', 'diagnóstico es:', 'se diagnostica:' - 'impresión:', 'impresión diagnóstica:' - 'probable:', 'probablemente:', 'sospecha de:' - 'cuadro de:', 'cuadro compatible con:' - 'se trata de:', 'parece ser:', 'compatible con:' - 'presenta:', 'tiene:' seguido de una condición médica (no síntoma simple) - Menciones directas de enfermedades: 'faringitis', 'gripe', 'hipertensión', etc. NO confundir con síntomas aislados. Un diagnóstico es una CONDICIÓN o ENFERMEDAD. Si se menciona de forma natural ('parece una gripe'), agregarlo igual.",
+        "items": {
+          "type": "object",
+          "properties": {
+            "nombre": {
+              "type": "string",
+              "description": "Nombre de la enfermedad o condición. Aceptar tanto términos técnicos como coloquiales: - Técnico: 'faringitis aguda', 'hipertensión arterial' - Coloquial: 'gripe', 'presión alta', 'garganta inflamada' Normalizar a terminología médica si es posible."
+            },
+            "tipo": {
+              "type": "string",
+              "enum": ["presuntivo", "definitivo"],
+              "description": "Tipo de diagnóstico. Si NO se especifica explícitamente, asumir 'presuntivo'. Palabras para 'presuntivo': probable, sospecha, posible, parece, compatible. Palabras para 'definitivo': confirmado, definitivo, diagnosticado, establecido."
+            },
+            "cie10": {
+              "type": "string",
+              "description": "Código CIE-10. Solo llenar si se menciona explícitamente (ejemplo: 'J02.9', 'CIE J02')."
+            }
+          }
+        }
+      },
+      "tratamientos": {
+        "type": "array",
+        "description": "Tratamientos indicados al paciente. IMPORTANTE: Detectar medicamentos, procedimientos e indicaciones terapéuticas en lenguaje natural. Frases clave que indican tratamiento: - 'tratamiento:', 'plan:', 'plan de tratamiento:' - 'indicar:', 'prescribir:', 'recetar:', 'formular:' - 'dar:', 'le doy:', 'le voy a dar:', 'tomar:' - 'administrar:', 'aplicar:', 'colocar:' - Menciones directas de medicamentos (paracetamol, ibuprofeno, etc.) - 'continuar con:', 'suspender:', 'iniciar:', 'cambiar a:' - Indicaciones no farmacológicas: 'reposo', 'dieta', 'ejercicio', 'abundantes líquidos' Detectar también dosis mencionadas junto al medicamento.",
+        "items": {
+          "type": "object",
+          "properties": {
+            "medicamento": {
+              "type": "string",
+              "description": "Nombre del medicamento, procedimiento o indicación. Aceptar múltiples formatos: - Nombre genérico: 'paracetamol', 'ibuprofeno' - Nombre comercial: 'Tylenol', 'Advil' - Descripción coloquial: 'analgésico', 'antiinflamatorio', 'pastilla para el dolor' - Indicaciones no farmacológicas: 'reposo', 'dieta blanda', 'tomar agua' Normalizar a nombre genérico cuando sea posible."
+            },
+            "dosisIndicacion": {
+              "type": "string",
+              "description": "Dosis, frecuencia y duración del tratamiento. Detectar patrones de dosificación en lenguaje natural: - 'X mg/ml cada Y horas' - 'una tableta/pastilla/cápsula' - 'dos veces al día', 'tres veces al día', 'cada 8 horas', 'cada 12 horas' - 'por X días', 'durante una semana', 'hasta que se acabe' - 'antes/después de las comidas', 'en ayunas' - 'si hay dolor', 'en caso de fiebre' Ejemplos: 'una pastilla cada 8 horas por 5 días', '500mg dos veces al día'."
+            },
+            "gtin": {
+              "type": "string",
+              "description": "Código GTIN o identificador del medicamento. Solo llenar si se menciona explícitamente."
+            }
+          }
+        }
+      },
+      "firma": {
+        "type": "object",
+        "description": "Datos de firma del médico responsable.",
+        "properties": {
+          "medico": {"type": "string", "description": "Nombre completo del médico."},
+          "colegiatura": {"type": "string", "description": "Número de colegiatura del médico."},
+          "fecha": {"type": "string", "description": "Fecha de firma."}
+        }
+      }
+    }
+  }
+}

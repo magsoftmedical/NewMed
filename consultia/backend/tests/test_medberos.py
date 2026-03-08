@@ -7,8 +7,13 @@ Ejecutar:
 
 import asyncio
 import json
-from medberos_client import medberos_client
-from medberos_mapper import consultia_to_medberos_payload
+import sys
+from pathlib import Path
+
+# Allow running as standalone script from tests/ directory
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from integrations.medberos import medberos_client, consultia_to_medberos_payload
 
 
 async def test_authentication():

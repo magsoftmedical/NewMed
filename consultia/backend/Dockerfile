@@ -8,6 +8,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY *.py ./
+COPY services/ ./services/
+COPY schemas/ ./schemas/
+COPY integrations/ ./integrations/
 
 EXPOSE 5000
 
