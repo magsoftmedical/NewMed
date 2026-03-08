@@ -9,15 +9,25 @@ _HALLUCINATIONS = [
     "gracias por ver el vídeo",
     "thanks for watching",
     "subtítulos por la comunidad de amara.org",
+    "subtitulado por",
     "suscríbete al canal",
     "saludos",
     "un saludo",
+    "¡Joder!",
+    "jodete",
+    "jódete",
     "suscríbete",
     "suscripción",
     "like y comparte",
     "gracias por escuchar",
     "gracias a todos",
-    "gracias"
+    "gracias",
+    "¡Muchas gracias!",
+    "¡Muchas gracias por ver el vídeo!",
+    "¡Gracias por ver el vídeo!",
+    "Buenas tardes",
+    "Buenos días",
+    "Buenas noches",
 ]
 
 
