@@ -1099,6 +1099,20 @@ async def transcribe_audio(file: UploadFile = File(...)):
 
         text = response.text.strip()
         logger.info(f"[WHISPER] Transcribed: {text[:100]}...")
+
+        # Filter known Whisper hallucinations on silent/near-silent audio
+        _HALLUCINATIONS = [
+            "subtítulos realizados por la comunidad de amara.org",
+            "gracias por ver el vídeo",
+            "thanks for watching",
+            "subtítulos por la comunidad de amara.org",
+            "suscríbete al canal",
+        ]
+        text_lower = text.lower().strip("¡!¿?.,;: ")
+        if any(h in text_lower for h in _HALLUCINATIONS):
+            logger.warning(f"[WHISPER] Hallucination filtered: {text}")
+            return JSONResponse(content={"text": ""})
+
         return JSONResponse(content={"text": text})
 
     except Exception as e:

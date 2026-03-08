@@ -24,6 +24,18 @@ export class WhisperRecorderService {
   private audioCtx?: AudioContext;
   private analyser?: AnalyserNode;
   private rafId?: number;
+  private peakLevel = 0; // track max audio level during recording
+
+  // Known Whisper hallucinations on silent audio
+  private static readonly HALLUCINATIONS = [
+    'subtítulos realizados por la comunidad de amara.org',
+    'gracias por ver el vídeo',
+    'thanks for watching',
+    'subtítulos por la comunidad de amara.org',
+    'suscríbete al canal',
+    'música',
+    'aplausos',
+  ];
 
   private isBrowser: boolean;
 
@@ -42,6 +54,7 @@ export class WhisperRecorderService {
       this.mediaStream = stream;
 
       this.chunks = [];
+      this.peakLevel = 0;
       this.mediaRecorder = new MediaRecorder(stream, { mimeType: this.pickMimeType() });
 
       this.mediaRecorder.ondataavailable = (e) => {
@@ -72,8 +85,8 @@ export class WhisperRecorderService {
       const blob = new Blob(this.chunks, { type: this.mediaRecorder!.mimeType || 'audio/webm' });
       this.chunks = [];
 
-      if (blob.size === 0) {
-        this.error$.next('La grabación está vacía');
+      if (blob.size === 0 || this.peakLevel < 0.02) {
+        this.error$.next(blob.size === 0 ? 'La grabación está vacía' : 'No se detectó voz en la grabación');
         this.releaseStream();
         return;
       }
@@ -87,8 +100,11 @@ export class WhisperRecorderService {
       this.http.post<{ text?: string; error?: string }>('/api/transcribe', formData).subscribe({
         next: (res) => {
           this.transcribing$.next(false);
-          if (res.text) {
+          if (res.text && !this.isHallucination(res.text)) {
             this.result$.next({ text: res.text, is_final: true });
+          } else if (res.text) {
+            // Whisper hallucinated on near-silent audio — discard silently
+            console.warn('[Whisper] Hallucination filtered:', res.text);
           } else {
             this.error$.next(res.error || 'Respuesta vacía del servidor');
           }
@@ -138,7 +154,9 @@ export class WhisperRecorderService {
       let sum = 0;
       for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
       const rms = Math.sqrt(sum / buf.length);
-      this.level$.next(Math.min(rms * 3.0, 1.0));
+      const level = Math.min(rms * 3.0, 1.0);
+      if (level > this.peakLevel) this.peakLevel = level;
+      this.level$.next(level);
       this.rafId = requestAnimationFrame(tick);
     };
 
@@ -190,5 +208,10 @@ export class WhisperRecorderService {
     if (mime.includes('ogg')) return 'ogg';
     if (mime.includes('mp4')) return 'mp4';
     return 'webm';
+  }
+
+  private isHallucination(text: string): boolean {
+    const lower = text.toLowerCase().replace(/[¡!¿?.,:;]/g, '').trim();
+    return WhisperRecorderService.HALLUCINATIONS.some(h => lower.includes(h));
   }
 }
