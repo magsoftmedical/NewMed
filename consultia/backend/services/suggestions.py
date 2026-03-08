@@ -5,33 +5,50 @@ from config import client, logger, OPENAI_MODEL_JSON
 from schemas.registry import get_required_keys
 
 
+def _value_present(form: Dict[str, Any], path: str) -> bool:
+    """Check whether a dotted path has a non-empty value in the form."""
+    parts = path.split(".")
+    cur: Any = form
+    for p in parts:
+        if isinstance(cur, list):
+            return len(cur) > 0
+        if not isinstance(cur, dict) or p not in cur:
+            return False
+        cur = cur[p]
+    if cur is None:
+        return False
+    if isinstance(cur, str):
+        return cur.strip() != ""
+    if isinstance(cur, list):
+        return len(cur) > 0
+    return True
+
+
 def compute_missing(form: Dict[str, Any], schema_id: str) -> List[str]:
     """Evaluate which required keys are missing from the form."""
     required_keys = get_required_keys(schema_id)
+    return [k for k in required_keys if not _value_present(form, k)]
+
+
+def compute_missing_from_schema(fields: Dict[str, Any], schema: dict) -> List[str]:
+    """Evaluate which required keys are missing using a dynamic schema (flat fields)."""
+    required_keys = schema.get("required_keys", [])
     missing: List[str] = []
-
-    def exists(path: str) -> bool:
-        parts = path.split(".")
-        cur: Any = form
-        for p in parts:
-            if isinstance(cur, list):
-                return len(cur) > 0
-            if not isinstance(cur, dict) or p not in cur:
-                return False
-            cur = cur[p]
-        if cur is None:
-            return False
-        if isinstance(cur, str):
-            return cur.strip() != ""
-        if isinstance(cur, list):
-            return len(cur) > 0
-        return True
-
     for k in required_keys:
-        if not exists(k):
+        val = fields.get(k)
+        if val is None:
             missing.append(k)
-
+        elif isinstance(val, str) and val.strip() == "":
+            missing.append(k)
+        elif isinstance(val, list) and len(val) == 0:
+            missing.append(k)
     return missing
+
+
+def friendly_names_from_schema(keys: List[str], schema: dict) -> Dict[str, str]:
+    """Build a map of key -> friendly name from schema property descriptions."""
+    props = schema.get("properties", {})
+    return {k: props[k].get("description", k) if k in props else k for k in keys}
 
 
 def build_suggestions(missing: List[str]) -> List[str]:

@@ -199,6 +199,65 @@ async def extract_form_incremental(messages: list, new_fragment: str) -> dict:
     return updated_form
 
 
+# --------------- Tab-level flat extraction ---------------
+
+async def extract_tab_fields(transcript: str, schema: dict) -> dict:
+    """
+    Extract flat key-value pairs from transcript using a dynamic schema sent by the frontend.
+    Returns only keys where data was found (no nulls).
+    """
+    properties = schema.get("properties", {})
+    if not properties:
+        return {}
+
+    required_keys = schema.get("required_keys", [])
+
+    field_descriptions = []
+    for key, prop in properties.items():
+        desc = prop.get("description", key)
+        ptype = prop.get("type", "string")
+        line = f"- {key} ({ptype}): {desc}"
+        if prop.get("enum"):
+            line += f" [opciones: {', '.join(str(e) for e in prop['enum'])}]"
+        elif ptype == "array" and prop.get("items", {}).get("enum"):
+            items_enum = prop["items"]["enum"]
+            line += f" [seleccionar de esta lista: {', '.join(str(e) for e in items_enum)}]"
+        if key in required_keys:
+            line += " [REQUERIDO]"
+        field_descriptions.append(line)
+
+    fields_block = "\n".join(field_descriptions)
+
+    sys_prompt = (
+        "Eres un asistente clínico. Extrae datos del transcript y devuelve SOLO un objeto JSON plano "
+        "con las claves definidas abajo. No inventes valores. Si un campo no aparece en el transcript, "
+        "NO lo incluyas en la respuesta. Presta especial atención a los campos marcados [REQUERIDO].\n\n"
+        f"CAMPOS:\n{fields_block}"
+    )
+
+    user_payload = {"transcript": transcript}
+
+    try:
+        resp = client.chat.completions.create(
+            model=OPENAI_MODEL_JSON,
+            messages=[
+                {"role": "system", "content": sys_prompt},
+                {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False)},
+            ],
+            temperature=0,
+            response_format={"type": "json_object"},
+        )
+        content = resp.choices[0].message.content or "{}"
+        result = json.loads(content)
+        if not isinstance(result, dict):
+            return {}
+        # Filter out nulls and empty strings
+        return {k: v for k, v in result.items() if v is not None and v != ""}
+    except Exception as ex:
+        logger.warning("extract_tab_fields failed: %s", ex)
+        return {}
+
+
 # --------------- Delta explanation ---------------
 
 async def explain_deltas(transcript: str, changes: list[dict]) -> list[dict]:

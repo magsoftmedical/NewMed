@@ -32,6 +32,7 @@ class SessionManager:
             "partial": "",
             "json_state": blank,
             "last_form": make_blank_from_schema(json_schema),
+            "active_schema": None,  # Dynamic schema from frontend (AiTabSchema dict)
             "messages": [
                 {
                     "role": "system",
@@ -52,6 +53,13 @@ class SessionManager:
 
     def get(self, session_id: str) -> Optional[Dict[str, Any]]:
         return self._sessions.get(session_id)
+
+    def set_active_schema(self, session_id: str, schema: dict) -> None:
+        state = self._sessions.get(session_id)
+        if state:
+            state["active_schema"] = schema
+            # Mark transcript position so we only extract NEW text for this schema
+            state["schema_transcript_offset"] = len(state.get("final", ""))
 
     def update_state(self, session_id: str, updated_form: dict) -> None:
         state = self._sessions.get(session_id)

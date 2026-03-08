@@ -27,6 +27,7 @@ from services.form_extraction import (
     deep_merge,
     compute_deltas,
     extract_form_delta,
+    extract_tab_fields,
     explain_deltas,
     stream_summary,
 )
@@ -215,6 +216,34 @@ async def predict_treatments_endpoint(request_data: Dict[str, Any]):
     })
 
 
+# ------------------ Schema validation ------------------
+
+MAX_SCHEMA_PROPERTIES = 100
+
+
+def validate_tab_schema(schema: Any) -> str | None:
+    """Return an error message if the schema is invalid, else None."""
+    if not isinstance(schema, dict):
+        return "schema must be a dict"
+    if not isinstance(schema.get("id"), str) or not schema["id"]:
+        return "schema.id is required (string)"
+    if not isinstance(schema.get("name"), str) or not schema["name"]:
+        return "schema.name is required (string)"
+    props = schema.get("properties")
+    if not isinstance(props, dict) or not props:
+        return "schema.properties is required (non-empty dict)"
+    if len(props) > MAX_SCHEMA_PROPERTIES:
+        return f"schema.properties exceeds max of {MAX_SCHEMA_PROPERTIES}"
+    for key, prop in props.items():
+        if not isinstance(prop, dict):
+            return f"schema.properties.{key} must be a dict"
+        if "type" not in prop:
+            return f"schema.properties.{key} missing 'type'"
+        if "description" not in prop:
+            return f"schema.properties.{key} missing 'description'"
+    return None
+
+
 # ------------------ WebSocket ------------------
 
 
@@ -234,6 +263,21 @@ async def ws_endpoint(ws: WebSocket):
 
             if typ == "partial":
                 state["partial"] = text
+
+            elif typ == "set_schema":
+                schema = msg.get("schema")
+                if not schema:
+                    await ws.send_json({"type": "error", "message": "set_schema: missing schema"})
+                    continue
+                err = validate_tab_schema(schema)
+                if err:
+                    await ws.send_json({"type": "error", "message": f"set_schema: {err}"})
+                    continue
+                session_manager.set_active_schema(session_id, schema)
+                logger.info(f"[WS] set_schema session={session_id} schema_id={schema.get('id')}")
+                await ws.send_json({"type": "schema_accepted", "schema_id": schema["id"]})
+                # Do NOT re-extract old transcript for the new schema.
+                # The offset was set in set_active_schema; only new speech will be extracted.
 
             elif typ == "final":
                 if text:
@@ -259,6 +303,10 @@ async def ws_endpoint(ws: WebSocket):
                             state["final"],
                         )
                     )
+
+                    # Also run tab extraction if a dynamic schema is active
+                    if state.get("active_schema"):
+                        asyncio.create_task(_run_tab_extraction(ws, session_id))
 
     except WebSocketDisconnect:
         return
@@ -308,6 +356,39 @@ async def _run_incremental_update(
     except Exception as e:
         logger.exception("[WS] incremental update error")
         await ws.send_json({"type": "error", "message": f"Update error: {e}"})
+
+
+async def _run_tab_extraction(ws: WebSocket, session_id: str):
+    """Extract flat key-value fields using the active dynamic schema.
+    Only processes transcript text that arrived AFTER the current schema was set,
+    so switching tabs doesn't re-map old dictation into the new schema.
+    """
+    try:
+        state = session_manager.get(session_id)
+        if not state:
+            return
+        schema = state.get("active_schema")
+        full_transcript = state.get("final", "")
+        if not schema or not full_transcript:
+            return
+
+        # Only extract from text dictated after this schema was activated
+        offset = state.get("schema_transcript_offset", 0)
+        transcript = full_transcript[offset:]
+        if not transcript.strip():
+            return
+
+        fields = await extract_tab_fields(transcript, schema)
+        await ws.send_json({
+            "type": "tab_fields",
+            "schema_id": schema.get("id"),
+            "fields": fields,
+        })
+        logger.info(f"[WS] tab_fields session={session_id} schema={schema.get('id')} keys={len(fields)}")
+
+    except Exception as e:
+        logger.exception("[WS] tab extraction error")
+        await ws.send_json({"type": "error", "message": f"Tab extraction error: {e}"})
 
 
 # ------------------ Static files & main ------------------
